@@ -1,0 +1,96 @@
+---
+alwaysApply: true
+---
+
+# Clean Code Writing Rules
+
+## MANDATORY CODE WRITING RULES
+
+You MUST follow these rules when writing any code:
+
+### CORE DESIGN PRINCIPLES
+
+- **DRY**: NEVER repeat the same code
+- **KISS**: Write code as simply as possible
+- **YAGNI**: Do NOT write unnecessary code
+- **Single Responsibility**: Functions MUST be under 20 lines and have ONE clear responsibility
+
+### CODE ORGANIZATION RULES
+
+Apply these 4 organization principles:
+
+- **Proximity**: Group related elements with blank lines
+- **Commonality**: Group related functionality into functions
+- **Similarity**: Use similar names and positions for similar roles
+- **Continuity**: Arrange code in dependency order
+
+### NAMING REQUIREMENTS
+
+#### Naming Principles (ALL MUST BE FOLLOWED)
+
+1. **Predictable**: Name must allow prediction of value, type, and return value
+2. **Contextual**: Add descriptive adjectives or nouns for context
+3. **Clear**: Remove unnecessary words while maintaining clear meaning
+4. **Concise**: Brief yet clearly convey role and purpose
+5. **Consistent**: Use identical terms for identical intentions across entire codebase
+
+#### REQUIRED Naming Patterns
+
+**Action Functions - USE THESE PATTERNS:**
+
+```
+// Creation: create~(), add~(), push~(), insert~(), new~(), append~(), spawn~(), make~(), build~(), generate~()
+// Retrieval: get~(), fetch~(), query~()
+// Transformation: parse~(), split~(), transform~(), serialize~()
+// Modification: update~(), mutation~()
+// Deletion: delete~(), remove~()
+// Communication: put~(), send~(), dispatch~(), receive~()
+// Validation: validate~(), check~()
+// Calculation: calc~(), compute~()
+// Control: init~(), configure~(), start~(), stop~()
+// Storage: save~(), store~()
+// Logging: log~(), record~()
+```
+
+**Data Variables - USE THESE PATTERNS:**
+
+```
+// Quantities: count~, sum~, num~, min~, max~, total
+// State: is~, has~, current~, selected~
+// Progressive/Past: ~ing, ~ed
+// Information: ~name, ~title, ~desc, ~text, ~data
+// Identifiers: ~ID, ~code, ~index, ~key
+// Time: ~at, ~date
+// Type: ~type
+// Collections: ~s
+// Others: item, temp, params, error
+// Conversion: from(), of()
+```
+
+### ABSTRACTION RULES
+
+- **Data Abstraction**: Simplify data structure and processing methods
+- **Process Abstraction**: Encapsulate complex logic into simple interfaces
+- **Appropriate Level**: Do NOT over-abstract or under-abstract
+
+### MANDATORY CHECKLIST
+
+Before finalizing ANY code, you MUST verify:
+
+1. ✅ **Applied standard naming patterns** from above
+2. ✅ **Organized code using 4 organization principles**
+3. ✅ **Split complex logic into small functions**
+4. ✅ **Code expresses intent without comments** (comments only when absolutely necessary)
+5. ✅ **Maintained consistent formatting**
+
+### FORBIDDEN PRACTICES
+
+- ❌ Do NOT mix similar terms (`display` vs `show`)
+- ❌ Do NOT write functions longer than 20 lines
+- ❌ Do NOT repeat code patterns
+- ❌ Do NOT use unclear or ambiguous names
+- ❌ Do NOT violate naming consistency across codebase
+
+## COMPLIANCE REQUIREMENT
+
+ALL code output MUST comply with these rules. No exceptions.

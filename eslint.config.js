@@ -69,8 +69,15 @@ export default [
     rules: {
       ...typescriptPlugin.configs.recommended.rules,
 
-      // ESLint rules
-      'no-unused-vars': 'warn',
+      // TypeScript rules (no-unused-vars는 TypeScript 규칙으로 대체)
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_',
+        },
+      ],
 
       // React rules
       'react/prop-types': 'off',
