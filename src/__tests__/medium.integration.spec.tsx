@@ -1,17 +1,18 @@
+/* eslint-disable import/order */
 import CssBaseline from '@mui/material/CssBaseline';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
-import { render, screen, within, act } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import { UserEvent, userEvent } from '@testing-library/user-event';
-import { http, HttpResponse } from 'msw';
+import { HttpResponse, http } from 'msw';
 import { SnackbarProvider } from 'notistack';
 import { ReactElement } from 'react';
 
+import App from '../App';
 import {
   setupMockHandlerCreation,
   setupMockHandlerDeletion,
   setupMockHandlerUpdating,
 } from '../__mocks__/handlersUtils';
-import App from '../App';
 import { server } from '../setupTests';
 import { Event } from '../types';
 
@@ -324,19 +325,107 @@ describe('일정 충돌', () => {
   });
 });
 
-it('notificationTime을 10으로 하면 지정 시간 10분 전 알람 텍스트가 노출된다', async () => {
-  vi.setSystemTime(new Date('2025-10-15 08:49:59'));
+// 알림 기능 통합 테스트
+describe('알림 기능', () => {
+  it('notificationTime을 10으로 하면 지정 시간 10분 전 알람 텍스트가 노출된다', async () => {
+    vi.setSystemTime(new Date('2025-10-15 08:49:59'));
 
-  setup(<App />);
+    setup(<App />);
 
-  // ! 일정 로딩 완료 후 테스트
-  await screen.findByText('일정 로딩 완료!');
+    // ! 일정 로딩 완료 후 테스트
+    await screen.findByText('일정 로딩 완료!');
 
-  expect(screen.queryByText('10분 후 기존 회의 일정이 시작됩니다.')).not.toBeInTheDocument();
+    expect(screen.queryByText('10분 후 기존 회의 일정이 시작됩니다.')).not.toBeInTheDocument();
 
-  act(() => {
-    vi.advanceTimersByTime(1000);
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+
+    expect(screen.getByText('10분 후 기존 회의 일정이 시작됩니다.')).toBeInTheDocument();
+  });
+});
+
+// 반복 일정 통합 테스트
+describe('반복 일정 기능', () => {
+  describe('반복 일정 생성', () => {
+    it('매일 반복 유형을 선택하고 일정을 생성하면 이벤트 리스트 및 캘린더에 아이콘과 함께 바로 표시된다.', async () => {
+      // Given: 일정 생성 폼
+      // When: 반복 유형 선택 (매일, 매주, 매월, 매년)하고 일정 생성
+      // Then: 입력한 정보대로 이벤트 리스트에 반복 일정이 생성, 캘린더 먼슬리뷰/위클리뷰 확인
+    });
+
+    it('매주 반복 유형을 선택하고 일정을 생성하면 이벤트 리스트 및 캘린더에 아이콘과 함께 바로 표시된다.', async () => {
+      // Given: 일정 생성 폼
+      // When: 반복 유형 선택 (매일, 매주, 매월, 매년)하고 일정 생성
+      // Then: 입력한 정보대로 이벤트 리스트에 반복 일정이 생성, 캘린더 먼슬리뷰/위클리뷰 확인
+    });
+
+    it('매월 반복 유형을 선택하고 일정을 생성하면 이벤트 리스트 및 캘린더에 아이콘과 함께 바로 표시된다.', async () => {
+      // Given: 일정 생성 폼
+      // When: 반복 유형 선택 (매일, 매주, 매월, 매년)하고 일정 생성
+      // Then: 입력한 정보대로 이벤트 리스트에 반복 일정이 생성, 캘린더 먼슬리뷰/위클리뷰 확인
+    });
+
+    it('매년 반복 유형을 선택하고 일정을 생성하면 이벤트 리스트 및 캘린더에 아이콘과 함께 바로 표시된다.', async () => {
+      // Given: 일정 생성 폼
+      // When: 반복 유형 선택 (매일, 매주, 매월, 매년)하고 일정 생성
+      // Then: 입력한 정보대로 이벤트 리스트에 반복 일정이 생성, 캘린더 먼슬리뷰/위클리뷰 확인
+    });
   });
 
-  expect(screen.getByText('10분 후 기존 회의 일정이 시작됩니다.')).toBeInTheDocument();
+  describe('반복 일정 수정', () => {
+    it('반복 일정을 수정하면 이벤트 리스트 및 캘린더에 아이콘과 함께 바로 반영된다.', async () => {
+      // Given: 일정 생성 폼
+      // When: 반복 유형 선택 (매일, 매주, 매월, 매년)하고 일정 생성
+      // Then: 입력한 정보대로 이벤트 리스트에 반복 일정이 생성, 캘린더 먼슬리뷰/위클리뷰 확인
+    });
+
+    it('반복 일정을 단일 일정으로 수정하면 반복 생성된 일정이 모두 삭제된다.', async () => {
+      // Given: 생성된 반복 일정
+      // When: 반복 일정을 단일 일정으로 수정
+      // Then: 반복 일정이 모두 삭제되고 단일 일정으로 수정된다.
+    });
+  });
+
+  describe('반복 일정 삭제', () => {
+    it('반복 일정을 삭제하면 이벤트 리스트 및 캘린더에서 바로 제거된다.', async () => {
+      // Given: 일정 생성 폼
+      // When: 반복 유형 선택 (매일, 매주, 매월, 매년)하고 일정 생성
+      // Then: 입력한 정보대로 이벤트 리스트에 반복 일정이 생성, 캘린더 먼슬리뷰/위클리뷰 확인
+    });
+  });
+
+  describe('경곗값 테스트', () => {
+    it('매월 31일을 선택하여 반복 일정을 생성하는 경우, 31일이 있는 달(1, 3, 5, 7, 8, 10, 12)에 일정이 생성된다.', async () => {
+      // Given: 일정 생성 폼
+      // When: 매월 31일로 반복일정 선택하여 일정 생성
+      // Then: 31일이 있는 월에만 일정이 반복되는 것을 확인
+    });
+
+    it('매월 30일을 선택하여 반복 일정을 생성하는 경우, 30일이 있는 달(4, 6, 9, 11)에 일정이 생성된다.', async () => {
+      // Given: 일정 생성 폼
+      // When: 매월 30일로 반복일정 선택하여 일정 생성
+      // Then: 30일이 있는 월에만 일정이 반복되는 것을 확인
+    });
+
+    it('29일을 선택하여 반복 일정을 생성하는 경우, 평년 2월은 제외하고 29일에 일정이 생성된다.', async () => {
+      // Given: 일정 생성 폼
+      // When: 29일로 반복일정 선택하여 일정 생성
+      // Then: 평년 2월에는 일정이 생성되지 않는 것을 확인
+    });
+  });
+
+  describe('반복 종료 조건', () => {
+    describe('반복 종료 조건을 선택하지 2025-10-30까지 생성되어 표시된다', () => {
+      // Given: 일정 생성 폼
+      // When: 반복 종료 조건 선택 안함
+      // Then: 반복 일정이 무한 반복되는 것을 확인
+    });
+
+    describe('반복 종료 조건을 선택하면 해당 날짜 이후로 반복 일정이 종료된다.', () => {
+      // Given: 일정 생성 폼
+      // When: 반복 종료 조건 선택
+      // Then: 반복 일정이 종료되는 것을 확인
+    });
+  });
 });
