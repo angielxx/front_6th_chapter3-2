@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 
 import { MAX_END_DATE } from '../constants/repeat';
 import { Event, EventForm } from '../types';
+import { generateRepeatEvent } from '../utils/eventUtils';
 
 export const useEventOperations = (editing: boolean, onSave?: () => void) => {
   const [events, setEvents] = useState<Event[]>([]);
@@ -66,68 +67,22 @@ export const useEventOperations = (editing: boolean, onSave?: () => void) => {
     const startDate = new Date(eventData.date);
     const endDate = repeatEndDate ? new Date(repeatEndDate) : MAX_END_DATE;
 
-    // 생성할 이벤트 데이터 배열 생성
-    const eventsToCreate: (Event | EventForm)[] = [];
+    const dates = generateRepeatEvent(startDate, endDate, interval, type);
 
-    if (type === 'daily') {
-      const currentDate = new Date(startDate);
-
-      while (currentDate <= endDate) {
-        eventsToCreate.push({
-          ...eventData,
-          date: currentDate.toISOString().split('T')[0],
-        });
-        currentDate.setDate(currentDate.getDate() + interval);
-      }
-    } else if (type === 'weekly') {
-      const currentDate = new Date(startDate);
-
-      while (currentDate <= endDate) {
-        eventsToCreate.push({
-          ...eventData,
-          date: currentDate.toISOString().split('T')[0],
-        });
-        currentDate.setDate(currentDate.getDate() + 7 * interval);
-      }
-    } else if (type === 'monthly') {
-      const currentDate = new Date(startDate);
-
-      while (currentDate <= endDate) {
-        eventsToCreate.push({
-          ...eventData,
-          date: currentDate.toISOString().split('T')[0],
-        });
-        currentDate.setMonth(currentDate.getMonth() + interval);
-      }
-    } else if (type === 'yearly') {
-      const currentDate = new Date(startDate);
-
-      while (currentDate <= endDate) {
-        eventsToCreate.push({
-          ...eventData,
-          date: currentDate.toISOString().split('T')[0],
-        });
-        currentDate.setFullYear(currentDate.getFullYear() + interval);
-      }
-    }
-
-    // 생성된 이벤트 배열을 순회하면서 API 요청 보내기
-    for (const eventToCreate of eventsToCreate) {
+    for (const date of dates) {
       try {
         const response = await fetch('/api/events', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(eventToCreate),
+          body: JSON.stringify({ ...eventData, date }),
         });
 
         if (!response.ok) {
-          throw new Error(`Failed to create event for ${eventToCreate.date}`);
+          throw new Error(`Failed to create event for ${date}`);
         }
       } catch (error) {
-        console.error(`Error creating repeat event for ${eventToCreate.date}:`, error);
-        enqueueSnackbar(`반복 일정 생성 실패: ${eventToCreate.date}`, {
-          variant: 'error',
-        });
+        console.error('Error creating repeat event:', error);
+        enqueueSnackbar('반복 일정 생성 실패', { variant: 'error' });
         break;
       }
     }

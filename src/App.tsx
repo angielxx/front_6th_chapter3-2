@@ -124,9 +124,6 @@ function App() {
       enqueueSnackbar('시간 설정을 확인해주세요.', { variant: 'error' });
       return;
     }
-    console.log('repeatType:', repeatType);
-    console.log('repeatInterval:', repeatInterval);
-    console.log('repeatEndDate:', repeatEndDate);
 
     const eventData: Event | EventForm = {
       id: editingEvent ? editingEvent.id : undefined,
