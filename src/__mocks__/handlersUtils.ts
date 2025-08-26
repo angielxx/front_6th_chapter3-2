@@ -4,8 +4,16 @@ import { server } from '../setupTests';
 import { Event } from '../types';
 
 // ! Hard 여기 제공 안함
+/**
+ * setupMockHandlerCreation 함수는 테스트 환경에서 이벤트 생성 및 조회 API를 모킹합니다.
+ *
+ * - initEvents 배열로 초기 이벤트 목록을 받아 mockEvents 배열에 복사합니다.
+ * - GET /api/events 요청 시 mockEvents 배열을 반환합니다.
+ * - POST /api/events 요청 시, 전달받은 이벤트에 새로운 id를 부여해 mockEvents에 추가하고, 생성된 이벤트를 반환합니다.
+ */
 export const setupMockHandlerCreation = (initEvents = [] as Event[]) => {
   const mockEvents: Event[] = [...initEvents];
+  let nextId = mockEvents.length + 1;
 
   server.use(
     http.get('/api/events', () => {
@@ -13,7 +21,7 @@ export const setupMockHandlerCreation = (initEvents = [] as Event[]) => {
     }),
     http.post('/api/events', async ({ request }) => {
       const newEvent = (await request.json()) as Event;
-      newEvent.id = String(mockEvents.length + 1); // 간단한 ID 생성
+      newEvent.id = String(nextId++); // 고유한 ID 생성
       mockEvents.push(newEvent);
       return HttpResponse.json(newEvent, { status: 201 });
     })

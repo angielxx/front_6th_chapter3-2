@@ -1,6 +1,7 @@
 import { useSnackbar } from 'notistack';
 import { useEffect, useState } from 'react';
 
+import { MAX_END_DATE } from '../constants/repeat';
 import { Event, EventForm } from '../types';
 
 export const useEventOperations = (editing: boolean, onSave?: () => void) => {
@@ -24,6 +25,12 @@ export const useEventOperations = (editing: boolean, onSave?: () => void) => {
   const saveEvent = async (eventData: Event | EventForm) => {
     try {
       let response;
+
+      if (eventData.repeat && eventData.repeat.type !== 'none') {
+        await createRepeatEvent(eventData);
+        return;
+      }
+
       if (editing) {
         response = await fetch(`/api/events/${(eventData as Event).id}`, {
           method: 'PUT',
@@ -53,6 +60,83 @@ export const useEventOperations = (editing: boolean, onSave?: () => void) => {
     }
   };
 
+  const createRepeatEvent = async (eventData: EventForm) => {
+    const { type, interval, endDate: repeatEndDate } = eventData.repeat;
+
+    const startDate = new Date(eventData.date);
+    const endDate = repeatEndDate ? new Date(repeatEndDate) : MAX_END_DATE;
+
+    // 생성할 이벤트 데이터 배열 생성
+    const eventsToCreate: (Event | EventForm)[] = [];
+
+    if (type === 'daily') {
+      const currentDate = new Date(startDate);
+
+      while (currentDate <= endDate) {
+        eventsToCreate.push({
+          ...eventData,
+          date: currentDate.toISOString().split('T')[0],
+        });
+        currentDate.setDate(currentDate.getDate() + interval);
+      }
+    } else if (type === 'weekly') {
+      const currentDate = new Date(startDate);
+
+      while (currentDate <= endDate) {
+        eventsToCreate.push({
+          ...eventData,
+          date: currentDate.toISOString().split('T')[0],
+        });
+        currentDate.setDate(currentDate.getDate() + 7 * interval);
+      }
+    } else if (type === 'monthly') {
+      const currentDate = new Date(startDate);
+
+      while (currentDate <= endDate) {
+        eventsToCreate.push({
+          ...eventData,
+          date: currentDate.toISOString().split('T')[0],
+        });
+        currentDate.setMonth(currentDate.getMonth() + interval);
+      }
+    } else if (type === 'yearly') {
+      const currentDate = new Date(startDate);
+
+      while (currentDate <= endDate) {
+        eventsToCreate.push({
+          ...eventData,
+          date: currentDate.toISOString().split('T')[0],
+        });
+        currentDate.setFullYear(currentDate.getFullYear() + interval);
+      }
+    }
+
+    // 생성된 이벤트 배열을 순회하면서 API 요청 보내기
+    for (const eventToCreate of eventsToCreate) {
+      try {
+        const response = await fetch('/api/events', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(eventToCreate),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to create event for ${eventToCreate.date}`);
+        }
+      } catch (error) {
+        console.error(`Error creating repeat event for ${eventToCreate.date}:`, error);
+        enqueueSnackbar(`반복 일정 생성 실패: ${eventToCreate.date}`, {
+          variant: 'error',
+        });
+        break;
+      }
+    }
+
+    // 반복 일정 생성 완료 후 이벤트 목록 새로고침
+    await fetchEvents();
+    enqueueSnackbar('반복 일정이 생성되었습니다.', { variant: 'success' });
+  };
+
   const deleteEvent = async (id: string) => {
     try {
       const response = await fetch(`/api/events/${id}`, { method: 'DELETE' });
@@ -79,5 +163,5 @@ export const useEventOperations = (editing: boolean, onSave?: () => void) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return { events, fetchEvents, saveEvent, deleteEvent };
+  return { events, fetchEvents, saveEvent, createRepeatEvent, deleteEvent };
 };
