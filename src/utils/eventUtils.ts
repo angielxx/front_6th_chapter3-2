@@ -52,6 +52,24 @@ export function getFilteredEvents(
 // ? 통합테스트를 위한 구현/리팩토링 중 생성한 유틸함수에 대한 단위테스트는 어느 시점에 작성해야할까?
 // ? 1) 통합테스트에 대한 리팩토링 완료 후
 // ? 2) 통합테스트에 대한 리팩토링 중 유틸함수 생성 직후
+
+/**
+ * 날짜가 유효한지 확인하는 함수
+ */
+function isValidDate(date: Date): boolean {
+  const year = date.getFullYear();
+  const month = date.getMonth();
+  const day = date.getDate();
+
+  // 새로운 Date 객체를 생성하여 원래 날짜와 비교
+  const checkDate = new Date(year, month, day);
+  return (
+    checkDate.getFullYear() === year &&
+    checkDate.getMonth() === month &&
+    checkDate.getDate() === day
+  );
+}
+
 export function generateRepeatEvent(
   startDate: string | Date,
   endDate: string | Date,
@@ -61,37 +79,62 @@ export function generateRepeatEvent(
   const dates: string[] = [];
 
   const end = typeof endDate === 'string' ? new Date(endDate) : endDate;
-  const start = typeof startDate === 'string' ? new Date(startDate) : startDate;
+  let current = typeof startDate === 'string' ? new Date(startDate) : startDate;
 
-  if (start > end) {
+  if (current > end) {
     return [];
   }
 
   if (type === 'daily') {
-    while (start <= end) {
-      dates.push(formatDate(start));
-      start.setDate(start.getDate() + interval);
+    while (current <= end) {
+      dates.push(formatDate(current));
+      current.setDate(current.getDate() + interval);
     }
   }
 
   if (type === 'weekly') {
-    while (start <= end) {
-      dates.push(formatDate(start));
-      start.setDate(start.getDate() + 7 * interval);
+    while (current <= end) {
+      dates.push(formatDate(current));
+      current.setDate(current.getDate() + 7 * interval);
     }
   }
 
   if (type === 'monthly') {
-    while (start <= end) {
-      dates.push(formatDate(start));
-      start.setMonth(start.getMonth() + interval);
+    while (current <= end) {
+      dates.push(formatDate(current));
+
+      // 다음 월의 같은 날짜로 이동
+      const nextMonth = new Date(current.getFullYear(), current.getMonth() + 1, current.getDate());
+
+      // 유효한 날짜인지 확인 (원래 의도한 날짜와 실제 날짜가 같은지)
+      const intendedDay = current.getDate();
+      const actualDay = nextMonth.getDate();
+
+      if (intendedDay === actualDay) {
+        // 유효한 날짜
+        current = nextMonth;
+      } else {
+        // 유효하지 않은 날짜는 건너뛰고 다음 월의 동일 날짜로 이동
+        current = new Date(nextMonth.getFullYear(), nextMonth.getMonth(), current.getDate());
+      }
     }
   }
 
   if (type === 'yearly') {
-    while (start <= end) {
-      dates.push(formatDate(start));
-      start.setFullYear(start.getFullYear() + interval);
+    while (current <= end) {
+      dates.push(formatDate(current));
+
+      // 다음 해의 같은 날짜로 이동
+      const nextYear = new Date(current);
+      nextYear.setFullYear(nextYear.getFullYear() + interval);
+
+      // 유효한 날짜인지 확인
+      if (isValidDate(nextYear)) {
+        current = nextYear;
+      } else {
+        // 유효하지 않은 날짜는 건너뛰고 다음 해로 이동
+        current = new Date(nextYear.getFullYear() + 1, nextYear.getMonth(), 1);
+      }
     }
   }
 

@@ -879,7 +879,11 @@ describe('반복 일정 생성', () => {
 // describe('반복 일정 표시', () => {});
 
 describe('매월 반복 일정 경곗값 테스트', () => {
-  it('매월 31일을 선택하여 반복 일정을 생성하는 경우, 31일이 있는 달(1, 3, 5, 7, 8, 10, 12)에 일정이 생성된다.', async () => {
+  beforeEach(() => {
+    setupMockHandlerCreation();
+  });
+
+  it('매월 31일을 선택하여 반복 일정을 생성하는 경우, 31일이 있는 달(1, 3, 5, 7, 8)에 일정이 생성된다.', async () => {
     // Given: 일정 생성 폼
     // When: 매월 31일로 반복일정 선택하여 일정 생성
     // Then: 31일이 있는 월에만 일정이 반복되는 것을 확인
@@ -908,9 +912,14 @@ describe('매월 반복 일정 경곗값 테스트', () => {
     const monthView = getView('month');
 
     let month = 1;
-    while (month <= 9) {
-      const dateCell = monthView.getByText('31').closest('td')!;
+    while (month <= 8) {
+      if (![1, 3, 5, 7, 8].includes(month)) {
+        await user.click(screen.getByLabelText('Next'));
+        month++;
+        continue;
+      }
 
+      const dateCell = monthView.getByText('31').closest('td')!;
       if (dateCell) {
         expect(within(dateCell).getByTestId('RepeatIcon')).toBeInTheDocument();
         expect(within(dateCell).getByText('31일 회의')).toBeInTheDocument();
@@ -923,7 +932,7 @@ describe('매월 반복 일정 경곗값 테스트', () => {
     }
   });
 
-  it('윤년 2월 29일을 선택하여 반복 일정을 생성하는 경우, 평년 2월은 제외하고 29일에 일정이 생성된다.', async () => {
+  it('윤년 2월 29일을 선택하여 매년 반복 일정을 생성하는 경우, 평년 2월은 제외하고 29일에 일정이 생성된다.', async () => {
     // Given: 일정 생성 폼
     // When: 29일로 반복일정 선택하여 일정 생성
     // Then: 평년 2월에는 일정이 생성되지 않는 것을 확인
@@ -960,11 +969,11 @@ describe('매월 반복 일정 경곗값 테스트', () => {
     expect(within(leapYearDateCell).getByText('29일 회의')).toBeInTheDocument();
 
     // 2025 = 평년 = 2월 28일
-    await navigateToTargetMonth(user, new Date('2025-02-01'), new Date('2025-02-28'));
+    await navigateToTargetMonth(user, new Date('2024-02-29'), new Date('2025-02-28'));
 
     const dateCell = monthView.getByText('28').closest('td')!;
-    expect(within(dateCell).getByTestId('RepeatIcon')).not.toBeInTheDocument();
-    expect(within(dateCell).getByText('29일 회의')).not.toBeInTheDocument();
+    expect(within(dateCell).queryByTestId('RepeatIcon')).not.toBeInTheDocument();
+    expect(within(dateCell).queryByText('29일 회의')).not.toBeInTheDocument();
   });
 });
 
