@@ -13,14 +13,13 @@ import {
   setupMockHandlerDeletion,
   setupMockHandlerUpdating,
 } from '../__mocks__/handlersUtils';
+
 import { MAX_END_DATE } from '../constants/repeat';
 import { server } from '../setupTests';
 import { Event, RepeatInfo } from '../types';
-import { formatDate } from '../utils/dateUtils';
+import { formatDate, formatMonth, formatWeek } from '../utils/dateUtils';
 
 const theme = createTheme();
-
-const TEST_TODAY = '2025-10-01';
 
 // ! Hard 여기 제공 안함
 /**
@@ -116,34 +115,6 @@ const selectView = async (user: UserEvent, viewType: 'week' | 'month') => {
 const getView = (viewType: 'week' | 'month') => {
   const testId = viewType === 'week' ? 'week-view' : 'month-view';
   return within(screen.getByTestId(testId));
-};
-
-const navigateToDate = (user: UserEvent, targetDate: string, currentDate: string) => {
-  const target = new Date(targetDate);
-  const current = new Date(currentDate);
-
-  return {
-    week: async () => {
-      // 주별 뷰에서 날짜 이동
-      const weeksDiff = Math.ceil(
-        (target.getTime() - current.getTime()) / (7 * 24 * 60 * 60 * 1000)
-      );
-
-      // Next 버튼을 weeksDiff만큼 클릭
-      for (let i = 0; i < weeksDiff; i++) {
-        await user.click(screen.getByLabelText('Next'));
-      }
-    },
-    month: async () => {
-      // 월별 뷰에서 날짜 이동
-      const monthsDiff = target.getMonth() - current.getMonth();
-
-      // Next 버튼을 monthsDiff만큼 클릭
-      for (let i = 0; i < monthsDiff; i++) {
-        await user.click(screen.getByLabelText('Next'));
-      }
-    },
-  };
 };
 
 describe('일정 CRUD 및 기본 기능', () => {
@@ -665,7 +636,6 @@ describe('반복 일정 생성', () => {
       {
         type: 'monthly',
         interval: 1,
-        endDate: formatDate(MAX_END_DATE),
       }
     );
 
@@ -715,7 +685,6 @@ describe('반복 일정 생성', () => {
       {
         type: 'monthly',
         interval: 1,
-        endDate: formatDate(MAX_END_DATE),
       }
     );
 
@@ -744,12 +713,137 @@ describe('반복 일정 생성', () => {
     }
   });
 
-  it('매년 반복 유형을 선택하고 일정을 생성하면 이벤트 리스트 및 캘린더에 바로 표시된다.', async () => {
+  it(
+    '매년 반복 유형을 선택하고 일정을 생성하면 위클리뷰, 이벤트 목록에 해당 일정이 있을 때만 표시된다.',
+    async () => {
+      // Given: 일정 생성 폼
+      // When: 반복 유형 선택 (매일, 매주, 매월, 매년)하고 일정 생성
+      // Then: 입력한 정보대로 이벤트 리스트에 반복 일정이 생성, 캘린더 먼슬리뷰/위클리뷰 확인
+      vi.setSystemTime(new Date('2024-01-01'));
+
+      const { user } = setup(<App />);
+
+      await saveSchedule(
+        user,
+        {
+          title: '연간 회의',
+          date: '2024-01-01',
+          startTime: '13:30',
+          endTime: '14:30',
+          description: '연간 반복 회의',
+          location: '라운지',
+          category: '업무',
+        },
+        {
+          type: 'yearly',
+          interval: 1,
+        }
+      );
+
+      // 2024년과 2025년 1월 1일의 연간 반복 일정 확인
+      const repeatDates = Array.from({ length: 2 }, (_, i) => {
+        const date = new Date(2024 + i, 0, 1);
+        return formatDate(date);
+      });
+
+      await selectView(user, 'week');
+      const weekView = getView('week');
+
+      for (const date of repeatDates) {
+        const targetWeeklyTitle = formatWeek(new Date(date));
+        const dayOfDate = new Date(date).getDate();
+
+        let maxNavigations = 52 + 2;
+        let weeklyTitle = weekView.getByTestId('week-title');
+
+        while (weeklyTitle.textContent !== targetWeeklyTitle) {
+          await user.click(screen.getByLabelText('Next'));
+          weeklyTitle = weekView.getByTestId('week-title');
+
+          maxNavigations--;
+          if (maxNavigations === 0) {
+            throw new Error('주차를 찾을 수 없습니다.');
+          }
+        }
+
+        // 해당 날짜의 셀에서 반복 일정 확인
+        const dateCell = weekView.getByText(dayOfDate).closest('td')!;
+        expect(within(dateCell).getByTestId('RepeatIcon')).toBeInTheDocument();
+        expect(within(dateCell).getByText('연간 회의')).toBeInTheDocument();
+
+        // 연간 반복 일정이 생성되었는지 확인
+        const eventList = within(screen.getByTestId('event-list'));
+        expect(eventList.getByText('연간 회의')).toBeInTheDocument();
+        expect(eventList.getByTestId('RepeatIcon')).toBeInTheDocument();
+      }
+    },
+    {
+      timeout: 30000,
+    }
+  );
+
+  it('매년 반복 유형을 선택하고 일정을 생성하면 먼슬리뷰, 이벤트 목록에 해당 일정이 있을 때만 표시된다.', async () => {
     // Given: 일정 생성 폼
     // When: 반복 유형 선택 (매일, 매주, 매월, 매년)하고 일정 생성
     // Then: 입력한 정보대로 이벤트 리스트에 반복 일정이 생성, 캘린더 먼슬리뷰/위클리뷰 확인
 
-    vi.setSystemTime(new Date('2023-10-01'));
+    vi.setSystemTime(new Date('2024-01-01'));
+
+    const { user } = setup(<App />);
+
+    await saveSchedule(
+      user,
+      {
+        title: '연간 회의',
+        date: '2024-01-01',
+        startTime: '13:30',
+        endTime: '14:30',
+        description: '연간 반복 회의',
+        location: '라운지',
+        category: '업무',
+      },
+      {
+        type: 'yearly',
+        interval: 1,
+      }
+    );
+
+    // 2024년과 2025년 1월 1일의 연간 반복 일정 확인
+    const repeatDates = Array.from({ length: 2 }, (_, i) => {
+      const date = new Date(2024 + i, 0, 1);
+      return formatDate(date);
+    });
+
+    await selectView(user, 'month');
+    const monthView = getView('month');
+
+    for (const date of repeatDates) {
+      const targetMonthTitle = formatMonth(new Date(date));
+      const dayOfDate = new Date(date).getDate();
+
+      let maxNavigations = 12 + 2;
+      let monthTitle = monthView.getByTestId('month-title');
+
+      while (monthTitle.textContent !== targetMonthTitle) {
+        await user.click(screen.getByLabelText('Next'));
+        monthTitle = monthView.getByTestId('month-title');
+
+        maxNavigations--;
+        if (maxNavigations === 0) {
+          throw new Error('월을 찾을 수 없습니다.');
+        }
+      }
+
+      // 해당 날짜의 셀에서 반복 일정 확인
+      const dateCell = monthView.getByText(dayOfDate).closest('td')!;
+      expect(within(dateCell).getByTestId('RepeatIcon')).toBeInTheDocument();
+      expect(within(dateCell).getByText('연간 회의')).toBeInTheDocument();
+
+      // 연간 반복 일정이 생성되었는지 확인
+      const eventList = within(screen.getByTestId('event-list'));
+      expect(eventList.getByText('연간 회의')).toBeInTheDocument();
+      expect(eventList.getByTestId('RepeatIcon')).toBeInTheDocument();
+    }
   });
 });
 
