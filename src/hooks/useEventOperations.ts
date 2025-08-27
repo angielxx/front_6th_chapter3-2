@@ -65,7 +65,9 @@ export const useEventOperations = (editing: boolean, onSave?: () => void) => {
     const { type, interval, endDate: repeatEndDate } = eventData.repeat;
 
     const startDate = new Date(eventData.date);
-    const endDate = repeatEndDate ? new Date(repeatEndDate) : MAX_END_DATE;
+    const endDate = repeatEndDate
+      ? new Date(Math.min(new Date(repeatEndDate).valueOf(), MAX_END_DATE.valueOf()))
+      : MAX_END_DATE;
 
     const dates = generateRepeatEvent(startDate, endDate, interval, type);
 

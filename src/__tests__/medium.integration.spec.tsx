@@ -18,6 +18,7 @@ import { MAX_END_DATE } from '../constants/repeat';
 import { server } from '../setupTests';
 import { Event, RepeatInfo } from '../types';
 import { formatDate, formatMonth, formatWeek } from '../utils/dateUtils';
+import { generateRepeatEvent } from '../utils/eventUtils';
 
 const theme = createTheme();
 
@@ -132,16 +133,16 @@ const navigateToTargetMonth = async (user: UserEvent, currentDate: Date, targetD
 };
 
 const navigateToTargetWeek = async (user: UserEvent, currentDate: Date, targetDate: Date) => {
-  let week = currentDate.getDay();
+  let week = currentDate;
 
-  while (week < targetDate.getDay()) {
+  while (week.valueOf() < targetDate.valueOf()) {
     await user.click(screen.getByLabelText('Next'));
-    week++;
+    week.setDate(week.getDate() + 7);
   }
 
-  while (week > targetDate.getDay()) {
+  while (week.valueOf() > targetDate.valueOf()) {
     await user.click(screen.getByLabelText('Previous'));
-    week--;
+    week.setDate(week.getDate() - 7);
   }
 };
 
@@ -837,10 +838,12 @@ describe('반복 일정 생성', () => {
     );
 
     // 2024년과 2025년 1월 1일의 연간 반복 일정 확인
-    const repeatDates = Array.from({ length: 2 }, (_, i) => {
-      const date = new Date(2024 + i, 0, 1);
-      return formatDate(date);
-    });
+    const repeatDates = generateRepeatEvent(
+      new Date('2024-01-01'),
+      new Date('2025-01-01'),
+      1,
+      'yearly'
+    );
 
     await selectView(user, 'month');
     const monthView = getView('month');
@@ -978,34 +981,134 @@ describe('매월 반복 일정 경곗값 테스트', () => {
 });
 
 describe('반복 종료일 테스트', () => {
-  it('매일 반복 일정 생성 시 2025년 10월 30일이 아닌 반복 종료일을 설정하면 반복 종료일까지만 반복 일정이 생성된다.', async () => {
-    // Given: 일정 생성 폼
-    // When: 반복 종료일로 반복일정 선택하여 일정 생성
-    // Then: 반복 종료일까지만 반복 일정이 생성된다.
-  });
-˝
-  it('매주 반복 일정 생성 시 2025년 10월 30일이 아닌 반복 종료일을 설정하면 반복 종료일까지만 반복 일정이 생성된다.', async () => {
-    // Given: 일정 생성 폼
-    // When: 반복 종료일로 반복일정 선택하여 일정 생성
-    // Then: 반복 종료일까지만 반복 일정이 생성된다.
+  beforeEach(() => {
+    setupMockHandlerCreation();
   });
 
-  it('매월 반복 일정 생성 시 2025년 10월 30일이 아닌 반복 종료일을 설정하면 반복 종료일까지만 반복 일정이 생성된다.', async () => {
+  it('반복 일정 생성 시 2025년 10월 30일보다 작은 반복 종료일을 설정하면 해당 반복 종료일까지만 반복 일정이 생성된다.', async () => {
     // Given: 일정 생성 폼
     // When: 반복 종료일로 반복일정 선택하여 일정 생성
     // Then: 반복 종료일까지만 반복 일정이 생성된다.
+
+    const END_DATE_TO_TEST = '2025-10-15';
+
+    const { user } = setup(<App />);
+
+    await saveSchedule(
+      user,
+      {
+        title: '반복 일정',
+        date: '2025-10-01',
+        startTime: '13:30',
+        endTime: '14:30',
+        description: '10월 15일까지 반복 일정',
+        location: '라운지',
+        category: '업무',
+      },
+      {
+        type: 'daily',
+        interval: 1,
+        endDate: END_DATE_TO_TEST,
+      }
+    );
+
+    await selectView(user, 'month');
+    const monthView = getView('month');
+
+    // 10월 15일까지 반복 일정 생성됨 확인
+    for (let day = 1; day <= 15; day++) {
+      const dateCell = monthView.getByText(day).closest('td')!;
+
+      expect(within(dateCell).getByTestId('RepeatIcon')).toBeInTheDocument();
+      expect(within(dateCell).getByText('반복 일정')).toBeInTheDocument();
+    }
+
+    // 2025년 10월 16일에 반복 일정 생성되지 않음 확인
+    const nextDateCell = monthView.getByText('16').closest('td')!;
+    expect(within(nextDateCell).queryByTestId('RepeatIcon')).not.toBeInTheDocument();
+    expect(within(nextDateCell).queryByText('반복 일정')).not.toBeInTheDocument();
   });
 
-  it('매년 반복 일정 생성 시 2025년 10월 30일이 아닌 반복 종료일을 설정하면 반복 종료일까지만 반복 일정이 생성된다.', async () => {
+  it('반복 일정 생성 시 반복 종료일이 2025년 10월 30일보다 크면, 2025년 10월 30일까지 반복 일정이 생성된다.', async () => {
     // Given: 일정 생성 폼
     // When: 반복 종료일로 반복일정 선택하여 일정 생성
     // Then: 반복 종료일까지만 반복 일정이 생성된다.
+
+    const END_DATE_TO_TEST = '2025-11-30';
+
+    const { user } = setup(<App />);
+
+    await saveSchedule(
+      user,
+      {
+        title: '반복 일정',
+        date: '2025-10-01',
+        startTime: '13:30',
+        endTime: '14:30',
+        description: '10월 15일까지 반복 일정',
+        location: '라운지',
+        category: '업무',
+      },
+      {
+        type: 'daily',
+        interval: 1,
+        endDate: END_DATE_TO_TEST,
+      }
+    );
+
+    await selectView(user, 'month');
+    const monthView = getView('month');
+
+    // 2025년 10월 30일에 생성된 반복 일정 확인
+    const dateCell = monthView.getByText('30').closest('td')!;
+    expect(within(dateCell).getByTestId('RepeatIcon')).toBeInTheDocument();
+    expect(within(dateCell).getByText('반복 일정')).toBeInTheDocument();
+
+    // 2025년 10월 31일에 반복 일정 생성되지 않음 확인
+    const dateCell2 = monthView.getByText('31').closest('td')!;
+    expect(within(dateCell2).queryByTestId('RepeatIcon')).not.toBeInTheDocument();
+    expect(within(dateCell2).queryByText('반복 일정')).not.toBeInTheDocument();
   });
 
   it('반복 종료일을 선택하지 않고 반복 일정을 생성하는 경우, 최대 반복 종료일인 2025년 10월 30일까지 반복 일정이 생성된다.', async () => {
     // Given: 일정 생성 폼
     // When: 반복 종료일을 선택하지 않고 반복 일정 생성
     // Then: 최대 반복 종료일인 2025년 10월 30일까지만 반복 일정이 생성된다.
+
+    const { user } = setup(<App />);
+
+    await saveSchedule(
+      user,
+      {
+        title: '반복 일정',
+        date: '2025-10-01',
+        startTime: '13:30',
+        endTime: '14:30',
+        description: '10월 15일까지 반복 일정',
+        location: '라운지',
+        category: '업무',
+      },
+      {
+        type: 'daily',
+        interval: 1,
+      }
+    );
+
+    await selectView(user, 'month');
+    const monthView = getView('month');
+
+    // 10월 30일까지 반복 일정 생성됨 확인
+    for (let day = 1; day <= 30; day++) {
+      const dateCell = monthView.getByText(day).closest('td')!;
+
+      expect(within(dateCell).getByTestId('RepeatIcon')).toBeInTheDocument();
+      expect(within(dateCell).getByText('반복 일정')).toBeInTheDocument();
+    }
+
+    // 2025년 10월 31일에 반복 일정 생성되지 않음 확인
+    const nextDateCell = monthView.getByText('31').closest('td')!;
+    expect(within(nextDateCell).queryByTestId('RepeatIcon')).not.toBeInTheDocument();
+    expect(within(nextDateCell).queryByText('반복 일정')).not.toBeInTheDocument();
   });
 });
 
