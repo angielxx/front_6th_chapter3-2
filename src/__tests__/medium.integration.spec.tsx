@@ -465,24 +465,22 @@ describe('반복 일정 기능', () => {
         }
       );
 
-      // 이벤트 목록에서 반복 일정이 표시되는지 확인
-      const eventList = within(screen.getByTestId('event-list'));
-      expect(eventList.queryByText('검색 결과가 없습니다.')).not.toBeInTheDocument();
-      expect(eventList.getAllByText('데일리 회의')).toHaveLength(4);
-      expect(eventList.getAllByText('라운지')).toHaveLength(4);
-      expect(eventList.getAllByText('카테고리: 업무')).toHaveLength(4);
-
-      // 위클리뷰로 전환
-      await selectView(user, 'week');
-
-      // 10월 1일이 있는 주로 이동 (현재 10월 1일이므로 이동할 필요 없음)
-      const weekView = getView('week');
-
       // 반복 일정이 설정 날짜(2025-10-01 ~ 2025-10-04)에 위클리뷰에 표시되는지 확인
       const repeatDates = Array.from({ length: 4 }, (_, i) => {
         const date = new Date(2025, 9, 1 + i); // 10월 1일부터 4일까지
         return date.toISOString().slice(0, 10);
       });
+
+      // 이벤트 목록에서 반복 일정이 표시되는지 확인
+      const eventList = within(screen.getByTestId('event-list'));
+      expect(eventList.queryByText('검색 결과가 없습니다.')).not.toBeInTheDocument();
+      expect(eventList.getAllByText('데일리 회의')).toHaveLength(repeatDates.length);
+      expect(eventList.getAllByText('라운지')).toHaveLength(repeatDates.length);
+      expect(eventList.getAllByText('카테고리: 업무')).toHaveLength(repeatDates.length);
+
+      // 위클리뷰로 전환
+      await selectView(user, 'week');
+      const weekView = getView('week');
 
       // 각 날짜 셀에서 반복 일정이 존재하는지 확인
       for (const date of repeatDates) {
@@ -493,7 +491,7 @@ describe('반복 일정 기능', () => {
 
       // 반복 일정의 개수가 올바른지 확인 (4개 생성되어야 함)
       const allDailyMeetings = eventList.getAllByText('데일리 회의');
-      expect(allDailyMeetings).toHaveLength(4);
+      expect(allDailyMeetings).toHaveLength(repeatDates.length);
     });
 
     it('매일 반복 유형을 선택하고 일정을 생성하면 먼슬리뷰에 오늘 이후로 매일 표시된다.', async () => {
@@ -508,46 +506,47 @@ describe('반복 일정 기능', () => {
       await saveSchedule(
         user,
         {
-          title: '반복 회의',
-          date: '2025-10-15',
+          title: '데일리 회의',
+          date: '2025-10-01',
           startTime: '13:30',
           endTime: '14:30',
-          description: '주간 회의',
+          description: '매일 반복 회의',
           location: '라운지',
           category: '업무',
         },
         {
           type: 'daily',
           interval: 1,
-          endDate: '2025-10-20',
+          endDate: '2025-10-31',
         }
       );
 
-      const eventList = within(screen.getByTestId('event-list'));
-      expect(eventList.getByText('반복 회의')).toBeInTheDocument();
-      expect(eventList.getByText('2025-10-15')).toBeInTheDocument();
-      expect(eventList.getByText('13:30 - 14:30')).toBeInTheDocument();
-      expect(eventList.getByText('주간 회의')).toBeInTheDocument();
-      expect(eventList.getByText('라운지')).toBeInTheDocument();
-      expect(eventList.getByText('카테고리: 업무')).toBeInTheDocument();
-
-      // 먼슬리뷰에 반복 일정 설정 날짜 이후로 매일 표시
-      const monthView = await selectView(user, 'month');
-
-      // 10월 15일이 있는 주로 이동 (현재 10월 1일에서 2주 후)
-      await navigateToDate(user, '2025-10-15').month();
-
-      // 반복 일정이 설정 날짜(2025-10-15) 이후로 매일 먼슬리뷰에 표시되는지 확인
-      // 2025-10-15 ~ 2025-10-30까지 반복 일정이 생성되어야 함
-      const repeatDates = Array.from({ length: 30 - 15 + 1 }, (_, i) => {
-        const date = new Date(2025, 9, 15 + i);
+      // 반복 일정이 설정 날짜(2025-10-01 ~ 2025-10-31)에 먼슬리뷰에 표시되는지 확인
+      const repeatDates = Array.from({ length: 31 }, (_, i) => {
+        const date = new Date(2025, 9, 1 + i);
         return date.toISOString().slice(0, 10);
       });
 
+      // 이벤트 목록에서 반복 일정이 표시되는지 확인
+      const eventList = within(screen.getByTestId('event-list'));
+      expect(eventList.queryByText('검색 결과가 없습니다.')).not.toBeInTheDocument();
+      expect(eventList.getAllByText('데일리 회의')).toHaveLength(repeatDates.length);
+      expect(eventList.getAllByText('라운지')).toHaveLength(repeatDates.length);
+      expect(eventList.getAllByText('카테고리: 업무')).toHaveLength(repeatDates.length);
+
+      // 먼슬리뷰로 전환
+      await selectView(user, 'month');
+      const monthView = getView('month');
+
       for (const date of repeatDates) {
-        expect(monthView.getByText(date)).toBeInTheDocument();
-        expect(monthView.getByText('반복 회의')).toBeInTheDocument();
+        const dayOfDate = new Date(date).getDate();
+        const dateCell = monthView.getByText(dayOfDate).closest('td')!;
+        expect(within(dateCell).getByText('데일리 회의')).toBeInTheDocument();
       }
+
+      // 반복 일정의 개수가 올바른지 확인 (31개 생성되어야 함)
+      const allDailyMeetings = eventList.getAllByText('데일리 회의');
+      expect(allDailyMeetings).toHaveLength(repeatDates.length);
     });
 
     it('매주 반복 유형을 선택하고 일정을 생성하면 이벤트 리스트 및 캘린더에 바로 표시된다.', async () => {
