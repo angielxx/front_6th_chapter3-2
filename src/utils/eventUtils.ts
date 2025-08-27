@@ -1,5 +1,5 @@
 import { Event, RepeatType } from '../types';
-import { formatDateToISOString, getWeekDates, isDateInRange } from './dateUtils';
+import { formatDate, getWeekDates, isDateInRange } from './dateUtils';
 
 function filterEventsByDateRange(events: Event[], start: Date, end: Date): Event[] {
   return events.filter((event) => {
@@ -69,28 +69,28 @@ export function generateRepeatEvent(
 
   if (type === 'daily') {
     while (start <= end) {
-      dates.push(formatDateToISOString(start));
+      dates.push(formatDate(start));
       start.setDate(start.getDate() + interval);
     }
   }
 
   if (type === 'weekly') {
     while (start <= end) {
-      dates.push(formatDateToISOString(start));
+      dates.push(formatDate(start));
       start.setDate(start.getDate() + 7 * interval);
     }
   }
 
   if (type === 'monthly') {
     while (start <= end) {
-      dates.push(formatDateToISOString(start));
+      dates.push(formatDate(start));
       start.setMonth(start.getMonth() + interval);
     }
   }
 
   if (type === 'yearly') {
     while (start <= end) {
-      dates.push(formatDateToISOString(start));
+      dates.push(formatDate(start));
       start.setFullYear(start.getFullYear() + interval);
     }
   }

@@ -108,12 +108,3 @@ export function formatDate(currentDate: Date, day?: number) {
     fillZero(day ?? currentDate.getDate()),
   ].join('-');
 }
-
-export function formatDateToISOString(
-  date: Date,
-  format: 'YYYY-MM-DD' | 'YYYY-MM-DDTHH:mm:ss' = 'YYYY-MM-DD'
-) {
-  if (format === 'YYYY-MM-DD') return date.toISOString().split('T')[0];
-
-  return date.toISOString();
-}

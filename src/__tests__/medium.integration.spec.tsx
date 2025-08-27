@@ -13,8 +13,10 @@ import {
   setupMockHandlerDeletion,
   setupMockHandlerUpdating,
 } from '../__mocks__/handlersUtils';
+import { MAX_END_DATE } from '../constants/repeat';
 import { server } from '../setupTests';
 import { Event, RepeatInfo } from '../types';
+import { formatDate } from '../utils/dateUtils';
 
 const theme = createTheme();
 
@@ -92,7 +94,10 @@ const saveSchedule = async (
     await user.type(intervalInput, repeat.interval.toString());
 
     // * 반복 종료일 선택
-    await user.type(screen.getByLabelText('반복 종료일'), repeat.endDate ?? '');
+    await user.type(
+      screen.getByLabelText('반복 종료일'),
+      repeat.endDate ?? formatDate(MAX_END_DATE)
+    );
   }
 
   await user.click(screen.getByTestId('event-submit-button'));
@@ -113,9 +118,9 @@ const getView = (viewType: 'week' | 'month') => {
   return within(screen.getByTestId(testId));
 };
 
-const navigateToDate = (user: UserEvent, targetDate: string) => {
+const navigateToDate = (user: UserEvent, targetDate: string, currentDate: string) => {
   const target = new Date(targetDate);
-  const current = new Date(TEST_TODAY);
+  const current = new Date(currentDate);
 
   return {
     week: async () => {
@@ -432,175 +437,356 @@ describe('알림 기능', () => {
 });
 
 // 반복 일정 통합 테스트
-describe('반복 일정 기능', () => {
-  describe('반복 일정 생성', () => {
-    it('매일 반복 유형을 선택하고 일정을 생성하면 해당 주의 위클리뷰, 이벤트 목록에 표시된다.', async () => {
-      // Given: 일정 생성 폼
-      // When: 반복 유형 선택 (매일, 매주, 매월, 매년)하고 일정 생성
-      // Then: 입력한 정보대로 이벤트 리스트에 반복 일정이 생성, 위클리뷰에 매일 표시된다.
-
-      setupMockHandlerCreation();
-
-      const { user } = setup(<App />);
-
-      // 일정 생성 전 초기 상태 확인
-      const initialEventList = within(screen.getByTestId('event-list'));
-      expect(initialEventList.getByText('검색 결과가 없습니다.')).toBeInTheDocument();
-
-      await saveSchedule(
-        user,
-        {
-          title: '데일리 회의',
-          date: '2025-10-01',
-          startTime: '13:30',
-          endTime: '14:30',
-          description: '매일 반복 회의',
-          location: '라운지',
-          category: '업무',
-        },
-        {
-          type: 'daily',
-          interval: 1,
-          endDate: '2025-10-04', // 테스트용으로 짧게 설정
-        }
-      );
-
-      // 반복 일정이 설정 날짜(2025-10-01 ~ 2025-10-04)에 위클리뷰에 표시되는지 확인
-      const repeatDates = Array.from({ length: 4 }, (_, i) => {
-        const date = new Date(2025, 9, 1 + i); // 10월 1일부터 4일까지
-        return date.toISOString().slice(0, 10);
-      });
-
-      // 이벤트 목록에서 반복 일정이 표시되는지 확인
-      const eventList = within(screen.getByTestId('event-list'));
-      expect(eventList.queryByText('검색 결과가 없습니다.')).not.toBeInTheDocument();
-      expect(eventList.getAllByText('데일리 회의')).toHaveLength(repeatDates.length);
-      expect(eventList.getAllByText('라운지')).toHaveLength(repeatDates.length);
-      expect(eventList.getAllByText('카테고리: 업무')).toHaveLength(repeatDates.length);
-
-      // 위클리뷰로 전환
-      await selectView(user, 'week');
-      const weekView = getView('week');
-
-      // 각 날짜 셀에서 반복 일정이 존재하는지 확인
-      for (const date of repeatDates) {
-        const dayOfDate = new Date(date).getDate();
-        const dateCell = weekView.getByText(dayOfDate).closest('td')!;
-        expect(within(dateCell).getByText('데일리 회의')).toBeInTheDocument();
-      }
-
-      // 반복 일정의 개수가 올바른지 확인 (4개 생성되어야 함)
-      const allDailyMeetings = eventList.getAllByText('데일리 회의');
-      expect(allDailyMeetings).toHaveLength(repeatDates.length);
-    });
-
-    it('매일 반복 유형을 선택하고 일정을 생성하면 먼슬리뷰에 오늘 이후로 매일 표시된다.', async () => {
-      // Given: 일정 생성 폼
-      // When: 반복 유형 선택 (매일, 매주, 매월, 매년)하고 일정 생성
-      // Then: 입력한 정보대로 이벤트 리스트에 반복 일정이 생성, 먼슬리뷰에 오늘 이후로 매일 표시
-
-      setupMockHandlerCreation();
-
-      const { user } = setup(<App />);
-
-      await saveSchedule(
-        user,
-        {
-          title: '데일리 회의',
-          date: '2025-10-01',
-          startTime: '13:30',
-          endTime: '14:30',
-          description: '매일 반복 회의',
-          location: '라운지',
-          category: '업무',
-        },
-        {
-          type: 'daily',
-          interval: 1,
-          endDate: '2025-10-31',
-        }
-      );
-
-      // 반복 일정이 설정 날짜(2025-10-01 ~ 2025-10-31)에 먼슬리뷰에 표시되는지 확인
-      const repeatDates = Array.from({ length: 31 }, (_, i) => {
-        const date = new Date(2025, 9, 1 + i);
-        return date.toISOString().slice(0, 10);
-      });
-
-      // 이벤트 목록에서 반복 일정이 표시되는지 확인
-      const eventList = within(screen.getByTestId('event-list'));
-      expect(eventList.queryByText('검색 결과가 없습니다.')).not.toBeInTheDocument();
-      expect(eventList.getAllByText('데일리 회의')).toHaveLength(repeatDates.length);
-      expect(eventList.getAllByText('라운지')).toHaveLength(repeatDates.length);
-      expect(eventList.getAllByText('카테고리: 업무')).toHaveLength(repeatDates.length);
-
-      // 먼슬리뷰로 전환
-      await selectView(user, 'month');
-      const monthView = getView('month');
-
-      for (const date of repeatDates) {
-        const dayOfDate = new Date(date).getDate();
-        const dateCell = monthView.getByText(dayOfDate).closest('td')!;
-        expect(within(dateCell).getByText('데일리 회의')).toBeInTheDocument();
-      }
-
-      // 반복 일정의 개수가 올바른지 확인 (31개 생성되어야 함)
-      const allDailyMeetings = eventList.getAllByText('데일리 회의');
-      expect(allDailyMeetings).toHaveLength(repeatDates.length);
-    });
-
-    it('매주 반복 유형을 선택하고 일정을 생성하면 이벤트 리스트 및 캘린더에 바로 표시된다.', async () => {
-      // Given: 일정 생성 폼
-      // When: 반복 유형 선택 (매일, 매주, 매월, 매년)하고 일정 생성
-      // Then: 입력한 정보대로 이벤트 리스트에 반복 일정이 생성, 캘린더 먼슬리뷰/위클리뷰 확인
-    });
-
-    it('매월 반복 유형을 선택하고 일정을 생성하면 이벤트 리스트 및 캘린더에 바로 표시된다.', async () => {
-      // Given: 일정 생성 폼
-      // When: 반복 유형 선택 (매일, 매주, 매월, 매년)하고 일정 생성
-      // Then: 입력한 정보대로 이벤트 리스트에 반복 일정이 생성, 캘린더 먼슬리뷰/위클리뷰 확인
-    });
-
-    it('매년 반복 유형을 선택하고 일정을 생성하면 이벤트 리스트 및 캘린더에 바로 표시된다.', async () => {
-      // Given: 일정 생성 폼
-      // When: 반복 유형 선택 (매일, 매주, 매월, 매년)하고 일정 생성
-      // Then: 입력한 정보대로 이벤트 리스트에 반복 일정이 생성, 캘린더 먼슬리뷰/위클리뷰 확인
-    });
+describe('반복 일정 생성', () => {
+  beforeEach(() => {
+    setupMockHandlerCreation();
   });
 
-  //   describe('반복 일정 수정', () => {
-  //     it('반복 일정을 수정하면 이벤트 리스트 및 캘린더에 바로 반영된다.', async () => {
-  //       // Given: 일정 생성 폼
-  //       // When: 반복 유형 선택 (매일, 매주, 매월, 매년)하고 일정 생성
-  //       // Then: 입력한 정보대로 이벤트 리스트에 반복 일정이 생성, 캘린더 먼슬리뷰/위클리뷰 확인
-  //     });
-  //   });
+  it('매일 반복 유형을 선택하고 일정을 생성하면 해당 주의 위클리뷰, 이벤트 목록에 표시된다.', async () => {
+    // Given: 일정 생성 폼
+    // When: 반복 유형 선택 (매일, 매주, 매월, 매년)하고 일정 생성
+    // Then: 입력한 정보대로 이벤트 리스트에 반복 일정이 생성, 위클리뷰에 매일 표시된다.
 
-  //   describe('반복 일정 삭제', () => {
-  //     it('반복 일정을 삭제하면 이벤트 리스트 및 캘린더에서 바로 제거된다.', async () => {
-  //       // Given: 일정 생성 폼
-  //       // When: 반복 유형 선택 (매일, 매주, 매월, 매년)하고 일정 생성
-  //       // Then: 입력한 정보대로 이벤트 리스트에 반복 일정이 생성, 캘린더 먼슬리뷰/위클리뷰 확인
-  //     });
-  //   });
+    const { user } = setup(<App />);
 
-  //   describe('경곗값 테스트', () => {
-  //     it('매월 31일을 선택하여 반복 일정을 생성하는 경우, 31일이 있는 달(1, 3, 5, 7, 8, 10, 12)에 일정이 생성된다.', async () => {
-  //       // Given: 일정 생성 폼
-  //       // When: 매월 31일로 반복일정 선택하여 일정 생성
-  //       // Then: 31일이 있는 월에만 일정이 반복되는 것을 확인
-  //     });
+    // 일정 생성 전 초기 상태 확인
+    const initialEventList = within(screen.getByTestId('event-list'));
+    expect(initialEventList.getByText('검색 결과가 없습니다.')).toBeInTheDocument();
 
-  //     it('매월 30일을 선택하여 반복 일정을 생성하는 경우, 30일이 있는 달(4, 6, 9, 11)에 일정이 생성된다.', async () => {
-  //       // Given: 일정 생성 폼
-  //       // When: 매월 30일로 반복일정 선택하여 일정 생성
-  //       // Then: 30일이 있는 월에만 일정이 반복되는 것을 확인
-  //     });
+    await saveSchedule(
+      user,
+      {
+        title: '데일리 회의',
+        date: '2025-10-01',
+        startTime: '13:30',
+        endTime: '14:30',
+        description: '매일 반복 회의',
+        location: '라운지',
+        category: '업무',
+      },
+      {
+        type: 'daily',
+        interval: 1,
+        endDate: '2025-10-04', // 테스트용으로 짧게 설정
+      }
+    );
 
-  //     it('29일을 선택하여 반복 일정을 생성하는 경우, 평년 2월은 제외하고 29일에 일정이 생성된다.', async () => {
-  //       // Given: 일정 생성 폼
-  //       // When: 29일로 반복일정 선택하여 일정 생성
-  //       // Then: 평년 2월에는 일정이 생성되지 않는 것을 확인
-  //     });
-  //   });
+    // 반복 일정이 설정 날짜(2025-10-01 ~ 2025-10-04)에 위클리뷰에 표시되는지 확인
+    const repeatDates = Array.from({ length: 4 }, (_, i) => {
+      const date = new Date(2025, 9, 1 + i); // 10월 1일부터 4일까지
+      return formatDate(date);
+    });
+
+    // 이벤트 목록에서 반복 일정이 표시되는지 확인
+    const eventList = within(screen.getByTestId('event-list'));
+    expect(eventList.queryByText('검색 결과가 없습니다.')).not.toBeInTheDocument();
+    expect(eventList.getAllByText('데일리 회의')).toHaveLength(repeatDates.length);
+    expect(eventList.getAllByText('라운지')).toHaveLength(repeatDates.length);
+    expect(eventList.getAllByText('카테고리: 업무')).toHaveLength(repeatDates.length);
+
+    // 위클리뷰로 전환
+    await selectView(user, 'week');
+    const weekView = getView('week');
+
+    // 각 날짜 셀에서 반복 일정이 존재하는지 확인
+    for (const date of repeatDates) {
+      const dayOfDate = new Date(date).getDate();
+      const dateCell = weekView.getByText(dayOfDate).closest('td')!;
+
+      expect(within(dateCell).getByTestId('RepeatIcon')).toBeInTheDocument();
+      expect(within(dateCell).getByText('데일리 회의')).toBeInTheDocument();
+    }
+
+    // 반복 일정의 개수가 올바른지 확인 (4개 생성되어야 함)
+    const allDailyMeetings = eventList.getAllByText('데일리 회의');
+    expect(allDailyMeetings).toHaveLength(repeatDates.length);
+  });
+
+  it('매일 반복 유형을 선택하고 일정을 생성하면 먼슬리뷰에 오늘 이후로 매일 표시된다.', async () => {
+    // Given: 일정 생성 폼
+    // When: 반복 유형 선택 (매일, 매주, 매월, 매년)하고 일정 생성
+    // Then: 입력한 정보대로 이벤트 리스트에 반복 일정이 생성, 먼슬리뷰에 오늘 이후로 매일 표시
+    const { user } = setup(<App />);
+
+    await saveSchedule(
+      user,
+      {
+        title: '데일리 회의',
+        date: '2025-10-01',
+        startTime: '13:30',
+        endTime: '14:30',
+        description: '매일 반복 회의',
+        location: '라운지',
+        category: '업무',
+      },
+      {
+        type: 'daily',
+        interval: 1,
+        endDate: '2025-10-31',
+      }
+    );
+
+    // 반복 일정이 설정 날짜(2025-10-01 ~ 2025-10-31)에 먼슬리뷰에 표시되는지 확인
+    const repeatDates = Array.from({ length: 31 }, (_, i) => {
+      const date = new Date(2025, 9, 1 + i);
+      return formatDate(date);
+    });
+
+    // 이벤트 목록에서 반복 일정이 표시되는지 확인
+    const eventList = within(screen.getByTestId('event-list'));
+    expect(eventList.queryByText('검색 결과가 없습니다.')).not.toBeInTheDocument();
+    expect(eventList.getAllByText('데일리 회의')).toHaveLength(repeatDates.length);
+    expect(eventList.getAllByText('라운지')).toHaveLength(repeatDates.length);
+    expect(eventList.getAllByText('카테고리: 업무')).toHaveLength(repeatDates.length);
+
+    // 먼슬리뷰로 전환
+    await selectView(user, 'month');
+    const monthView = getView('month');
+
+    for (const date of repeatDates) {
+      const dayOfDate = new Date(date).getDate();
+      const dateCell = monthView.getByText(dayOfDate).closest('td')!;
+
+      expect(within(dateCell).getByTestId('RepeatIcon')).toBeInTheDocument();
+      expect(within(dateCell).getByText('데일리 회의')).toBeInTheDocument();
+    }
+
+    // 반복 일정의 개수가 올바른지 확인 (31개 생성되어야 함)
+    const allDailyMeetings = eventList.getAllByText('데일리 회의');
+    expect(allDailyMeetings).toHaveLength(repeatDates.length);
+  });
+
+  it('매주 반복 유형을 선택하고 일정을 생성하면 매주 위클리뷰, 이벤트 목록에 바로 표시된다.', async () => {
+    // Given: 일정 생성 폼
+    // When: 반복 유형 선택 (매일, 매주, 매월, 매년)하고 일정 생성
+    // Then: 입력한 정보대로 이벤트 리스트에 반복 일정이 생성, 캘린더 먼슬리뷰/위클리뷰 확인
+
+    const { user } = setup(<App />);
+
+    await saveSchedule(
+      user,
+      {
+        title: '주간 회의',
+        date: '2025-10-01',
+        startTime: '13:30',
+        endTime: '14:30',
+        description: '주간 반복 회의',
+        location: '라운지',
+        category: '업무',
+      },
+      {
+        type: 'weekly',
+        interval: 1,
+        endDate: '2025-10-31',
+      }
+    );
+
+    const repeatDates = ['2025-10-01', '2025-10-08', '2025-10-15', '2025-10-22', '2025-10-29'];
+
+    await selectView(user, 'week');
+    const weekView = getView('week');
+
+    for (const date of repeatDates) {
+      const dayOfDate = new Date(date).getDate();
+      const dateCell = weekView.getByText(dayOfDate).closest('td')!;
+
+      expect(within(dateCell).getByTestId('RepeatIcon')).toBeInTheDocument();
+      expect(within(dateCell).getByText('주간 회의')).toBeInTheDocument();
+
+      const eventList = within(screen.getByTestId('event-list'));
+      expect(eventList.getAllByText('주간 회의')).toHaveLength(1);
+
+      await user.click(screen.getByLabelText('Next'));
+    }
+  });
+
+  it('매주 반복 유형을 선택하고 일정을 생성하면 매주 먼슬리뷰, 이벤트 목록에 오늘 이후로 매주 표시된다.', async () => {
+    // Given: 일정 생성 폼
+    // When: 반복 유형 선택 (매일, 매주, 매월, 매년)하고 일정 생성
+    // Then: 입력한 정보대로 이벤트 리스트에 반복 일정이 생성, 먼슬리뷰에 오늘 이후로 매일 표시
+
+    const { user } = setup(<App />);
+
+    await saveSchedule(
+      user,
+      {
+        title: '주간 회의',
+        date: '2025-10-01',
+        startTime: '13:30',
+        endTime: '14:30',
+        description: '주간 반복 회의',
+        location: '라운지',
+        category: '업무',
+      },
+      {
+        type: 'weekly',
+        interval: 1,
+        endDate: '2025-10-31',
+      }
+    );
+
+    const repeatDates = ['2025-10-01', '2025-10-08', '2025-10-15', '2025-10-22', '2025-10-29'];
+
+    await selectView(user, 'month');
+    const monthView = getView('month');
+
+    for (const date of repeatDates) {
+      const dayOfDate = new Date(date).getDate();
+      const dateCell = monthView.getByText(dayOfDate).closest('td')!;
+
+      expect(within(dateCell).getByTestId('RepeatIcon')).toBeInTheDocument();
+      expect(within(dateCell).getByText('주간 회의')).toBeInTheDocument();
+    }
+
+    const eventList = within(screen.getByTestId('event-list'));
+    expect(eventList.getAllByText('주간 회의')).toHaveLength(repeatDates.length);
+    expect(eventList.getAllByText('라운지')).toHaveLength(repeatDates.length);
+    expect(eventList.getAllByText('카테고리: 업무')).toHaveLength(repeatDates.length);
+  });
+
+  it('매월 반복 유형을 선택하고 일정을 생성하면 위클리뷰, 이벤트 목록에 해당 일정이 있을 때만 표시된다.', async () => {
+    // Given: 일정 생성 폼
+    // When: 반복 유형 선택 (매일, 매주, 매월, 매년)하고 일정 생성
+    // Then: 입력한 정보대로 이벤트 리스트에 반복 일정이 생성, 캘린더 먼슬리뷰/위클리뷰 확인
+
+    const { user } = setup(<App />);
+
+    await saveSchedule(
+      user,
+      {
+        title: '월간 회의',
+        date: '2025-01-01',
+        startTime: '13:30',
+        endTime: '14:30',
+        description: '월간 반복 회의',
+        location: '라운지',
+        category: '업무',
+      },
+      {
+        type: 'monthly',
+        interval: 1,
+        endDate: formatDate(MAX_END_DATE),
+      }
+    );
+
+    const repeatDates = Array.from({ length: 12 }, (_, i) => {
+      const date = new Date(2025, 0 + i, 1);
+      return formatDate(date);
+    });
+
+    await selectView(user, 'week');
+    const weekView = getView('week');
+
+    for (const date of repeatDates) {
+      const dayOfDate = new Date(date).getDate();
+      let dateCell = weekView.getByText(dayOfDate).closest('td')!;
+
+      while (!dateCell) {
+        await user.click(screen.getByLabelText('Next'));
+        dateCell = weekView.getByText(dayOfDate).closest('td')!;
+      }
+
+      expect(within(dateCell).getByTestId('RepeatIcon')).toBeInTheDocument();
+      expect(within(dateCell).getByText('월간 회의')).toBeInTheDocument();
+
+      const eventList = within(screen.getByTestId('event-list'));
+      expect(eventList.getAllByText('월간 회의')).toHaveLength(1);
+    }
+  });
+
+  it('매월 반복 유형을 선택하고 일정을 생성하면 먼슬리뷰, 이벤트 목록에 해당 일정이 있을 때만 표시된다.', async () => {
+    // Given: 일정 생성 폼
+    // When: 반복 유형 선택 (매일, 매주, 매월, 매년)하고 일정 생성
+    // Then: 입력한 정보대로 이벤트 리스트에 반복 일정이 생성, 먼슬리뷰에 해당 일정이 있을 때만 표시
+
+    const { user } = setup(<App />);
+
+    await saveSchedule(
+      user,
+      {
+        title: '월간 회의',
+        date: '2025-01-01',
+        startTime: '13:30',
+        endTime: '14:30',
+        description: '월간 반복 회의',
+        location: '라운지',
+        category: '업무',
+      },
+      {
+        type: 'monthly',
+        interval: 1,
+        endDate: formatDate(MAX_END_DATE),
+      }
+    );
+
+    const repeatDates = Array.from({ length: 12 }, (_, i) => {
+      const date = new Date(2025, 0 + i, 1);
+      return formatDate(date);
+    });
+
+    await selectView(user, 'month');
+    const monthView = getView('month');
+
+    for (const date of repeatDates) {
+      const dayOfDate = new Date(date).getDate();
+      let dateCell = monthView.getByText(dayOfDate).closest('td')!;
+
+      while (!dateCell) {
+        await user.click(screen.getByLabelText('Next'));
+        dateCell = monthView.getByText(dayOfDate).closest('td')!;
+      }
+
+      expect(within(dateCell).getByTestId('RepeatIcon')).toBeInTheDocument();
+      expect(within(dateCell).getByText('월간 회의')).toBeInTheDocument();
+
+      const eventList = within(screen.getByTestId('event-list'));
+      expect(eventList.getAllByText('월간 회의')).toHaveLength(1);
+    }
+  });
+
+  it('매년 반복 유형을 선택하고 일정을 생성하면 이벤트 리스트 및 캘린더에 바로 표시된다.', async () => {
+    // Given: 일정 생성 폼
+    // When: 반복 유형 선택 (매일, 매주, 매월, 매년)하고 일정 생성
+    // Then: 입력한 정보대로 이벤트 리스트에 반복 일정이 생성, 캘린더 먼슬리뷰/위클리뷰 확인
+
+    vi.setSystemTime(new Date('2023-10-01'));
+  });
 });
+
+describe('반복 일정 표시', () => {});
+
+//   describe('반복 일정 수정', () => {
+//     it('반복 일정을 수정하면 이벤트 리스트 및 캘린더에 바로 반영된다.', async () => {
+//       // Given: 일정 생성 폼
+//       // When: 반복 유형 선택 (매일, 매주, 매월, 매년)하고 일정 생성
+//       // Then: 입력한 정보대로 이벤트 리스트에 반복 일정이 생성, 캘린더 먼슬리뷰/위클리뷰 확인
+//     });
+//   });
+
+//   describe('반복 일정 삭제', () => {
+//     it('반복 일정을 삭제하면 이벤트 리스트 및 캘린더에서 바로 제거된다.', async () => {
+//       // Given: 일정 생성 폼
+//       // When: 반복 유형 선택 (매일, 매주, 매월, 매년)하고 일정 생성
+//       // Then: 입력한 정보대로 이벤트 리스트에 반복 일정이 생성, 캘린더 먼슬리뷰/위클리뷰 확인
+//     });
+//   });
+
+//   describe('경곗값 테스트', () => {
+//     it('매월 31일을 선택하여 반복 일정을 생성하는 경우, 31일이 있는 달(1, 3, 5, 7, 8, 10, 12)에 일정이 생성된다.', async () => {
+//       // Given: 일정 생성 폼
+//       // When: 매월 31일로 반복일정 선택하여 일정 생성
+//       // Then: 31일이 있는 월에만 일정이 반복되는 것을 확인
+//     });
+
+//     it('매월 30일을 선택하여 반복 일정을 생성하는 경우, 30일이 있는 달(4, 6, 9, 11)에 일정이 생성된다.', async () => {
+//       // Given: 일정 생성 폼
+//       // When: 매월 30일로 반복일정 선택하여 일정 생성
+//       // Then: 30일이 있는 월에만 일정이 반복되는 것을 확인
+//     });
+
+//     it('29일을 선택하여 반복 일정을 생성하는 경우, 평년 2월은 제외하고 29일에 일정이 생성된다.', async () => {
+//       // Given: 일정 생성 폼
+//       // When: 29일로 반복일정 선택하여 일정 생성
+//       // Then: 평년 2월에는 일정이 생성되지 않는 것을 확인
+//     });
+//   });
