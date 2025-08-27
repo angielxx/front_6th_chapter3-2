@@ -117,6 +117,34 @@ const getView = (viewType: 'week' | 'month') => {
   return within(screen.getByTestId(testId));
 };
 
+const navigateToTargetMonth = async (user: UserEvent, currentDate: Date, targetDate: Date) => {
+  let month = currentDate.getMonth();
+
+  while (month < targetDate.getMonth()) {
+    await user.click(screen.getByLabelText('Next'));
+    month++;
+  }
+
+  while (month > targetDate.getMonth()) {
+    await user.click(screen.getByLabelText('Previous'));
+    month--;
+  }
+};
+
+const navigateToTargetWeek = async (user: UserEvent, currentDate: Date, targetDate: Date) => {
+  let week = currentDate.getDay();
+
+  while (week < targetDate.getDay()) {
+    await user.click(screen.getByLabelText('Next'));
+    week++;
+  }
+
+  while (week > targetDate.getDay()) {
+    await user.click(screen.getByLabelText('Previous'));
+    week--;
+  }
+};
+
 describe('일정 CRUD 및 기본 기능', () => {
   it('입력한 새로운 일정 정보에 맞춰 모든 필드가 이벤트 리스트에 정확히 저장된다.', async () => {
     setupMockHandlerCreation();
@@ -847,7 +875,106 @@ describe('반복 일정 생성', () => {
   });
 });
 
-describe('반복 일정 표시', () => {});
+// * 반복 일정 생성 테스트에서 함께 검증
+// describe('반복 일정 표시', () => {});
+
+describe('매월 반복 일정 경곗값 테스트', () => {
+  it('매월 31일을 선택하여 반복 일정을 생성하는 경우, 31일이 있는 달(1, 3, 5, 7, 8, 10, 12)에 일정이 생성된다.', async () => {
+    // Given: 일정 생성 폼
+    // When: 매월 31일로 반복일정 선택하여 일정 생성
+    // Then: 31일이 있는 월에만 일정이 반복되는 것을 확인
+    vi.setSystemTime(new Date('2025-01-01'));
+
+    const { user } = setup(<App />);
+
+    await saveSchedule(
+      user,
+      {
+        title: '31일 회의',
+        date: '2025-01-31',
+        startTime: '13:30',
+        endTime: '14:30',
+        description: '31일 반복 회의',
+        location: '라운지',
+        category: '업무',
+      },
+      {
+        type: 'monthly',
+        interval: 1,
+      }
+    );
+
+    await selectView(user, 'month');
+    const monthView = getView('month');
+
+    let month = 1;
+    while (month <= 9) {
+      const dateCell = monthView.getByText('31').closest('td')!;
+
+      if (dateCell) {
+        expect(within(dateCell).getByTestId('RepeatIcon')).toBeInTheDocument();
+        expect(within(dateCell).getByText('31일 회의')).toBeInTheDocument();
+      } else {
+        expect(monthView.queryByText('31일 회의')).not.toBeInTheDocument();
+      }
+
+      await user.click(screen.getByLabelText('Next'));
+      month++;
+    }
+  });
+
+  it('윤년 2월 29일을 선택하여 반복 일정을 생성하는 경우, 평년 2월은 제외하고 29일에 일정이 생성된다.', async () => {
+    // Given: 일정 생성 폼
+    // When: 29일로 반복일정 선택하여 일정 생성
+    // Then: 평년 2월에는 일정이 생성되지 않는 것을 확인
+
+    vi.setSystemTime(new Date('2024-02-01'));
+
+    const { user } = setup(<App />);
+
+    await saveSchedule(
+      user,
+      {
+        title: '29일 회의',
+        date: '2024-02-29',
+        startTime: '13:30',
+        endTime: '14:30',
+        description: '29일 반복 회의',
+        location: '라운지',
+        category: '업무',
+      },
+      {
+        type: 'monthly',
+        interval: 1,
+      }
+    );
+
+    await selectView(user, 'month');
+    const monthView = getView('month');
+
+    // 2024 = 윤년 = 2월 29일
+    await navigateToTargetMonth(user, new Date('2024-02-01'), new Date('2024-02-29'));
+
+    const leapYearDateCell = monthView.getByText('29').closest('td')!;
+    expect(within(leapYearDateCell).getByTestId('RepeatIcon')).toBeInTheDocument();
+    expect(within(leapYearDateCell).getByText('29일 회의')).toBeInTheDocument();
+
+    // 2025 = 평년 = 2월 28일
+    await navigateToTargetMonth(user, new Date('2025-02-01'), new Date('2025-02-28'));
+
+    const dateCell = monthView.getByText('28').closest('td')!;
+    expect(within(dateCell).getByTestId('RepeatIcon')).not.toBeInTheDocument();
+    expect(within(dateCell).getByText('29일 회의')).not.toBeInTheDocument();
+  });
+});
+
+describe('반복 종료일 테스트', () => {
+  it('반복 종료일을 선택하여 반복 일정을 생성하는 경우, 반복 종료일에 일정이 생성된다.', async () => {
+    // Given: 일정 생성 폼
+    // When: 반복 종료일로 반복일정 선택하여 일정 생성
+    // Then: 반복 종료일에 일정이 생성된다.
+  });
+});
 
 //   describe('반복 일정 수정', () => {
 //     it('반복 일정을 수정하면 이벤트 리스트 및 캘린더에 바로 반영된다.', async () => {
@@ -862,25 +989,5 @@ describe('반복 일정 표시', () => {});
 //       // Given: 일정 생성 폼
 //       // When: 반복 유형 선택 (매일, 매주, 매월, 매년)하고 일정 생성
 //       // Then: 입력한 정보대로 이벤트 리스트에 반복 일정이 생성, 캘린더 먼슬리뷰/위클리뷰 확인
-//     });
-//   });
-
-//   describe('경곗값 테스트', () => {
-//     it('매월 31일을 선택하여 반복 일정을 생성하는 경우, 31일이 있는 달(1, 3, 5, 7, 8, 10, 12)에 일정이 생성된다.', async () => {
-//       // Given: 일정 생성 폼
-//       // When: 매월 31일로 반복일정 선택하여 일정 생성
-//       // Then: 31일이 있는 월에만 일정이 반복되는 것을 확인
-//     });
-
-//     it('매월 30일을 선택하여 반복 일정을 생성하는 경우, 30일이 있는 달(4, 6, 9, 11)에 일정이 생성된다.', async () => {
-//       // Given: 일정 생성 폼
-//       // When: 매월 30일로 반복일정 선택하여 일정 생성
-//       // Then: 30일이 있는 월에만 일정이 반복되는 것을 확인
-//     });
-
-//     it('29일을 선택하여 반복 일정을 생성하는 경우, 평년 2월은 제외하고 29일에 일정이 생성된다.', async () => {
-//       // Given: 일정 생성 폼
-//       // When: 29일로 반복일정 선택하여 일정 생성
-//       // Then: 평년 2월에는 일정이 생성되지 않는 것을 확인
 //     });
 //   });
