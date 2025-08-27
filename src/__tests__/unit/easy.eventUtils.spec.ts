@@ -155,6 +155,12 @@ describe('generateRepeatEvent', () => {
       expect(result).toHaveLength(3);
       expect(result).toEqual(['2025-07-01', '2025-08-01', '2025-09-01']);
     });
+
+    it('매월 반복 유형이고 반복 일정 날짜가 31일일 때, 31일이 있는 달에만 일정이 생성된다.', () => {
+      const result = generateRepeatEvent('2025-07-31', '2025-10-31', 1, 'monthly');
+      expect(result).toHaveLength(3);
+      expect(result).toEqual(['2025-07-31', '2025-08-31', '2025-10-31']);
+    });
   });
 
   describe('매년 반복', () => {
@@ -162,6 +168,13 @@ describe('generateRepeatEvent', () => {
       const result = generateRepeatEvent('2025-07-01', '2028-07-01', 1, 'yearly');
       expect(result).toHaveLength(4);
       expect(result).toEqual(['2025-07-01', '2026-07-01', '2027-07-01', '2028-07-01']);
+    });
+
+    it('매년 반복 유형이고 반복 일정 날짜가 2월 29일일 때, 윤년 2월에만 일정이 생성된다.', () => {
+      const result = generateRepeatEvent('2024-02-29', '2028-02-29', 1, 'yearly');
+      console.log(result);
+      expect(result).toHaveLength(2);
+      expect(result).toEqual(['2024-02-29', '2028-02-29']);
     });
   });
 });

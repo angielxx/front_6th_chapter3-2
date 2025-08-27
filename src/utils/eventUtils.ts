@@ -104,7 +104,11 @@ export function generateRepeatEvent(
       dates.push(formatDate(current));
 
       // 다음 월의 같은 날짜로 이동
-      const nextMonth = new Date(current.getFullYear(), current.getMonth() + 1, current.getDate());
+      const nextMonth = new Date(
+        current.getFullYear(),
+        current.getMonth() + interval,
+        current.getDate()
+      );
 
       // 유효한 날짜인지 확인 (원래 의도한 날짜와 실제 날짜가 같은지)
       const intendedDay = current.getDate();
@@ -121,19 +125,22 @@ export function generateRepeatEvent(
   }
 
   if (type === 'yearly') {
-    while (current <= end) {
-      dates.push(formatDate(current));
+    const year = current.getFullYear();
+    const month = current.getMonth();
+    const day = current.getDate();
 
-      // 다음 해의 같은 날짜로 이동
-      const nextYear = new Date(current);
-      nextYear.setFullYear(nextYear.getFullYear() + interval);
+    let currentYear = year;
+    const endYear = end.getFullYear();
 
-      // 유효한 날짜인지 확인
-      if (isValidDate(nextYear)) {
-        current = nextYear;
+    while (currentYear <= endYear) {
+      const nextYearDate = new Date(currentYear, month, day);
+      const isValid = nextYearDate.getMonth() === month && nextYearDate.getDate() === day;
+
+      if (isValid) {
+        dates.push(formatDate(nextYearDate));
+        currentYear += interval;
       } else {
-        // 유효하지 않은 날짜는 건너뛰고 다음 해로 이동
-        current = new Date(nextYear.getFullYear() + 1, nextYear.getMonth(), 1);
+        currentYear++;
       }
     }
   }
