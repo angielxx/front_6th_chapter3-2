@@ -69,6 +69,10 @@ export function generateRepeatEvent(
     return [];
   }
 
+  if (interval <= 0 || interval < 0) {
+    return [formatDate(current)];
+  }
+
   if (type === 'daily') {
     while (current <= end) {
       dates.push(formatDate(current));
