@@ -340,6 +340,7 @@ function App() {
             <FormLabel htmlFor="title">제목</FormLabel>
             <TextField
               id="title"
+              data-testid="title-input"
               size="small"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -350,6 +351,7 @@ function App() {
             <FormLabel htmlFor="date">날짜</FormLabel>
             <TextField
               id="date"
+              data-testid="date-input"
               size="small"
               type="date"
               value={date}
@@ -363,6 +365,7 @@ function App() {
               <Tooltip title={startTimeError || ''} open={!!startTimeError} placement="top">
                 <TextField
                   id="start-time"
+                  data-testid="start-time-input"
                   size="small"
                   type="time"
                   value={startTime}
@@ -377,6 +380,7 @@ function App() {
               <Tooltip title={endTimeError || ''} open={!!endTimeError} placement="top">
                 <TextField
                   id="end-time"
+                  data-testid="end-time-input"
                   size="small"
                   type="time"
                   value={endTime}
@@ -392,6 +396,7 @@ function App() {
             <FormLabel htmlFor="description">설명</FormLabel>
             <TextField
               id="description"
+              data-testid="description-input"
               size="small"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -402,6 +407,7 @@ function App() {
             <FormLabel htmlFor="location">위치</FormLabel>
             <TextField
               id="location"
+              data-testid="location-input"
               size="small"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
@@ -430,6 +436,7 @@ function App() {
             <FormControlLabel
               control={
                 <Checkbox
+                  data-testid="repeat-checkbox"
                   checked={isRepeating}
                   onChange={(e) => setIsRepeating(e.target.checked)}
                 />
@@ -459,6 +466,7 @@ function App() {
               <FormControl fullWidth>
                 <FormLabel id="repeat-type-label">반복 유형</FormLabel>
                 <Select
+                  data-testid="repeat-type-select"
                   size="small"
                   value={repeatType}
                   onChange={(e) => setRepeatType(e.target.value as RepeatType)}
@@ -483,6 +491,7 @@ function App() {
                   <FormLabel htmlFor="repeat-interval">반복 간격</FormLabel>
                   <TextField
                     id="repeat-interval"
+                    data-testid="repeat-interval-input"
                     size="small"
                     type="number"
                     value={repeatInterval}
@@ -494,6 +503,7 @@ function App() {
                   <FormLabel htmlFor="repeat-end-date">반복 종료일</FormLabel>
                   <TextField
                     id="repeat-end-date"
+                    data-testid="repeat-end-date-input"
                     size="small"
                     type="date"
                     value={repeatEndDate}
@@ -518,7 +528,11 @@ function App() {
           <Typography variant="h4">일정 보기</Typography>
 
           <Stack direction="row" spacing={2} justifyContent="space-between" alignItems="center">
-            <IconButton aria-label="Previous" onClick={() => navigate('prev')}>
+            <IconButton
+              data-testid="calendar-prev"
+              aria-label="Previous"
+              onClick={() => navigate('prev')}
+            >
               <ChevronLeft />
             </IconButton>
             <Select
@@ -534,7 +548,11 @@ function App() {
                 Month
               </MenuItem>
             </Select>
-            <IconButton aria-label="Next" onClick={() => navigate('next')}>
+            <IconButton
+              data-testid="calendar-next"
+              aria-label="Next"
+              onClick={() => navigate('next')}
+            >
               <ChevronRight />
             </IconButton>
           </Stack>
@@ -629,7 +647,11 @@ function App() {
         </Stack>
       </Stack>
 
-      <Dialog open={isOverlapDialogOpen} onClose={() => setIsOverlapDialogOpen(false)}>
+      <Dialog
+        data-testid="overlap-warning-modal"
+        open={isOverlapDialogOpen}
+        onClose={() => setIsOverlapDialogOpen(false)}
+      >
         <DialogTitle>일정 겹침 경고</DialogTitle>
         <DialogContent>
           <DialogContentText>
@@ -645,6 +667,7 @@ function App() {
         <DialogActions>
           <Button onClick={() => setIsOverlapDialogOpen(false)}>취소</Button>
           <Button
+            data-testid="overlap-warning-confirm-button"
             color="error"
             onClick={() => {
               setIsOverlapDialogOpen(false);
