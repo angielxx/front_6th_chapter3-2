@@ -11,6 +11,7 @@ import App from '../App';
 import {
   setupMockHandlerCreation,
   setupMockHandlerDeletion,
+  setupMockHandlerRepeatEventDeletion,
   setupMockHandlerUpdating,
 } from '../__mocks__/handlersUtils';
 
@@ -129,20 +130,6 @@ const navigateToTargetMonth = async (user: UserEvent, currentDate: Date, targetD
   while (month > targetDate.getMonth()) {
     await user.click(screen.getByLabelText('Previous'));
     month--;
-  }
-};
-
-const navigateToTargetWeek = async (user: UserEvent, currentDate: Date, targetDate: Date) => {
-  let week = currentDate;
-
-  while (week.valueOf() < targetDate.valueOf()) {
-    await user.click(screen.getByLabelText('Next'));
-    week.setDate(week.getDate() + 7);
-  }
-
-  while (week.valueOf() > targetDate.valueOf()) {
-    await user.click(screen.getByLabelText('Previous'));
-    week.setDate(week.getDate() - 7);
   }
 };
 
@@ -982,9 +969,6 @@ describe('반복 일정 생성', () => {
   });
 });
 
-// * 반복 일정 생성 테스트에서 함께 검증
-// describe('반복 일정 표시', () => {});
-
 describe('매월 반복 일정 경곗값 테스트', () => {
   beforeEach(() => {
     setupMockHandlerCreation();
@@ -1393,10 +1377,51 @@ describe('반복 일정 수정', () => {
   });
 });
 
-//   describe('반복 일정 삭제', () => {
-//     it('반복 일정을 삭제하면 이벤트 리스트 및 캘린더에서 바로 제거된다.', async () => {
-//       // Given: 일정 생성 폼
-//       // When: 반복 유형 선택 (매일, 매주, 매월, 매년)하고 일정 생성
-//       // Then: 입력한 정보대로 이벤트 리스트에 반복 일정이 생성, 캘린더 먼슬리뷰/위클리뷰 확인
-//     });
-//   });
+describe('반복 일정 삭제', () => {
+  it('매일 반복 일정을 삭제하면 해당 일정만 이벤트 리스트 및 캘린더에서 바로 제거된다.', async () => {
+    // Given: 매일 반복 일정이 생성된 상태
+    // When: 특정 일정을 삭제
+    // Then: 해당 일정만 삭제되고 나머지는 유지
+
+    setupMockHandlerCreation();
+
+    const { user } = setup(<App />);
+
+    const event = {
+      title: '데일리 회의',
+      date: '2025-10-01',
+      startTime: '13:30',
+      endTime: '14:30',
+      description: '매일 반복 회의',
+      location: '라운지',
+      category: '업무',
+    };
+
+    // 매일 반복 일정 생성
+    await saveSchedule(user, event, {
+      type: 'daily',
+      interval: 1,
+      endDate: '2025-10-04',
+    });
+
+    // 반복 일정이 생성되었는지 확인
+    const eventList = within(screen.getByTestId('event-list'));
+    expect(eventList.getAllByText('데일리 회의')).toHaveLength(4);
+
+    // 반복 아이콘이 있는 이벤트 아이템들을 찾기
+    const eventItemsWithRepeatIcon = findEventItemsWithRepeatIcon();
+    expect(eventItemsWithRepeatIcon.length).toBe(4);
+
+    setupMockHandlerRepeatEventDeletion();
+
+    // 첫 번째 반복 일정 삭제
+    const deleteButtons = screen.getAllByLabelText('Delete event');
+    await user.click(deleteButtons[0]);
+
+    // 삭제 후 반복 일정 개수 확인 (3개 남아있어야 함)
+    expect(eventList.getAllByText('데일리 회의')).toHaveLength(3);
+
+    const eventItemsWithRepeatIcon2 = findEventItemsWithRepeatIcon();
+    expect(eventItemsWithRepeatIcon2.length).toBe(3);
+  });
+});

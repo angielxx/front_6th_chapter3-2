@@ -71,23 +71,8 @@ export const setupMockHandlerUpdating = () => {
   );
 };
 
-export const setupMockHandlerUpdatingRepeatEvent = (events: Event[]) => {
-  const mockEvents: Event[] = [...events];
-
-  server.use(
-    http.put('/api/events/:id', async ({ params, request }) => {
-      const { id } = params;
-      const updatedEvent = (await request.json()) as Event;
-      const index = mockEvents.findIndex((event) => event.id === id);
-
-      mockEvents[index] = { ...mockEvents[index], ...updatedEvent };
-      return HttpResponse.json(mockEvents[index]);
-    })
-  );
-};
-
-export const setupMockHandlerDeletion = () => {
-  const mockEvents: Event[] = [
+export const setupMockHandlerDeletion = (events?: Event[]) => {
+  const mockEvents: Event[] = events || [
     {
       id: '1',
       title: '삭제할 이벤트',
@@ -111,6 +96,75 @@ export const setupMockHandlerDeletion = () => {
       const index = mockEvents.findIndex((event) => event.id === id);
 
       mockEvents.splice(index, 1);
+      return new HttpResponse(null, { status: 204 });
+    })
+  );
+};
+
+// 반복 일정 삭제 테스트를 위한 전용 목업
+export const setupMockHandlerRepeatEventDeletion = () => {
+  const mockEvents: Event[] = [
+    {
+      id: '1',
+      title: '데일리 회의',
+      date: '2025-10-01',
+      startTime: '13:30',
+      endTime: '14:30',
+      description: '매일 반복 회의',
+      location: '라운지',
+      category: '업무',
+      repeat: { type: 'daily', interval: 1, endDate: '2025-10-04' },
+      notificationTime: 10,
+    },
+    {
+      id: '2',
+      title: '데일리 회의',
+      date: '2025-10-02',
+      startTime: '13:30',
+      endTime: '14:30',
+      description: '매일 반복 회의',
+      location: '라운지',
+      category: '업무',
+      repeat: { type: 'daily', interval: 1, endDate: '2025-10-04' },
+      notificationTime: 10,
+    },
+    {
+      id: '3',
+      title: '데일리 회의',
+      date: '2025-10-03',
+      startTime: '13:30',
+      endTime: '14:30',
+      description: '매일 반복 회의',
+      location: '라운지',
+      category: '업무',
+      repeat: { type: 'daily', interval: 1, endDate: '2025-10-04' },
+      notificationTime: 10,
+    },
+    {
+      id: '4',
+      title: '데일리 회의',
+      date: '2025-10-04',
+      startTime: '13:30',
+      endTime: '14:30',
+      description: '매일 반복 회의',
+      location: '라운지',
+      category: '업무',
+      repeat: { type: 'daily', interval: 1, endDate: '2025-10-04' },
+      notificationTime: 10,
+    },
+  ];
+
+  server.use(
+    http.get('/api/events', () => {
+      return HttpResponse.json({ events: mockEvents });
+    }),
+    http.delete('/api/events/:id', ({ params }) => {
+      const { id } = params;
+      const index = mockEvents.findIndex((event) => event.id === id);
+
+      if (index !== -1) {
+        mockEvents.splice(index, 1);
+      }
       return new HttpResponse(null, { status: 204 });
     })
   );
