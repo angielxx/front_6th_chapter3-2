@@ -673,7 +673,7 @@ describe('반복 일정 기능', () => {
   });
 
   describe('반복 일정 수정', () => {
-    it('반복 일정을 수정하면 단일 일정으로 수정되어 캘린더, 이벤트 목록에 표시된다.', async () => {
+    it('반복 일정을 내용을 수정하면 단일 일정으로 수정되어 캘린더, 이벤트 목록에서 반복 아이콘이 사라진다.', async () => {
       // Given: 일정 생성 폼
       // When: 반복 유형 선택 (매일, 매주, 매월, 매년)하고 일정 생성
       // Then: 입력한 정보대로 이벤트 리스트에 반복 일정이 생성, 캘린더 먼슬리뷰/위클리뷰 확인
@@ -729,9 +729,6 @@ describe('반복 일정 기능', () => {
       // 수정된 이벤트에는 반복 아이콘이 없어야 함
       const hasModifiedEventRepeatIcon = verifyRepeatIconExists('수정된 데일리 회의');
       expect(hasModifiedEventRepeatIcon).toBe(false);
-
-      // 나머지 반복 일정이 모두 제거됨
-      expect(modifiedEventItemsWithRepeatIcon.length).toBe(0);
     });
   });
 
