@@ -141,6 +141,43 @@ const navigateToDate = (user: UserEvent, targetDate: string) => {
   };
 };
 
+// 반복 아이콘 관련 헬퍼 함수들
+const findEventItemsWithRepeatIcon = () => {
+  const eventList = within(screen.getByTestId('event-list'));
+  const eventItems = eventList.getAllByTestId('event-list-item');
+
+  return eventItems.filter((item) => {
+    try {
+      // 반복 아이콘이 있는지 확인 (data-testid, aria-label, 또는 특정 클래스명으로 찾기)
+      return (
+        within(item).queryByTestId('RepeatIcon') !== null ||
+        within(item).queryByLabelText('반복') !== null
+      );
+    } catch {
+      return false;
+    }
+  });
+};
+
+const verifyRepeatIconExists = (eventTitle: string) => {
+  const eventList = within(screen.getByTestId('event-list'));
+  const eventItems = eventList.getAllByTestId('event-list-item');
+
+  // 해당 제목의 이벤트 아이템을 찾기
+  const targetEventItem = eventItems.find((item) => within(item).queryByText(eventTitle) !== null);
+
+  if (!targetEventItem) {
+    throw new Error(`Event with title "${eventTitle}" not found`);
+  }
+
+  // 해당 아이템에 반복 아이콘이 있는지 확인
+  const hasRepeatIcon =
+    within(targetEventItem).queryByTestId('RepeatIcon') !== null ||
+    within(targetEventItem).queryByLabelText('반복 일정') !== null;
+
+  return hasRepeatIcon;
+};
+
 describe('일정 CRUD 및 기본 기능', () => {
   it('입력한 새로운 일정 정보에 맞춰 모든 필드가 이벤트 리스트에 정확히 저장된다.', async () => {
     setupMockHandlerCreation();
@@ -495,10 +532,6 @@ describe('반복 일정 기능', () => {
     });
 
     it('매일 반복 유형을 선택하고 일정을 생성하면 먼슬리뷰에 오늘 이후로 매일 표시된다.', async () => {
-      // Given: 일정 생성 폼
-      // When: 반복 유형 선택 (매일, 매주, 매월, 매년)하고 일정 생성
-      // Then: 입력한 정보대로 이벤트 리스트에 반복 일정이 생성, 먼슬리뷰에 오늘 이후로 매일 표시
-
       setupMockHandlerCreation();
 
       const { user } = setup(<App />);
@@ -549,6 +582,77 @@ describe('반복 일정 기능', () => {
       expect(allDailyMeetings).toHaveLength(repeatDates.length);
     });
 
+    it('반복 일정에는 반복 아이콘이 표시되어야 한다.', async () => {
+      setupMockHandlerCreation();
+
+      const { user } = setup(<App />);
+
+      // 반복 일정 생성
+      await saveSchedule(
+        user,
+        {
+          title: '주간 회의',
+          date: '2025-10-01',
+          startTime: '14:00',
+          endTime: '15:00',
+          description: '주간 반복 회의',
+          location: '회의실',
+          category: '업무',
+        },
+        {
+          type: 'weekly',
+          interval: 1,
+          endDate: '2025-10-29',
+        }
+      );
+
+      // 반복 아이콘이 있는 이벤트 아이템들을 찾기
+      const eventItemsWithRepeatIcon = findEventItemsWithRepeatIcon();
+      expect(eventItemsWithRepeatIcon.length).toBeGreaterThan(0);
+
+      // 모든 반복 일정에 반복 아이콘이 있는지 확인
+      eventItemsWithRepeatIcon.forEach((item) => {
+        const itemContent = within(item);
+        expect(itemContent.getByText('주간 회의')).toBeInTheDocument();
+
+        // 반복 아이콘 확인 (여러 방법으로 시도)
+        const hasRepeatIcon =
+          itemContent.queryByTestId('repeat-icon') !== null ||
+          itemContent.queryByLabelText('반복 일정') !== null ||
+          itemContent.queryByRole('img', { name: /반복|repeat/i }) !== null;
+
+        expect(hasRepeatIcon).toBe(true);
+      });
+
+      // 일반 일정에는 반복 아이콘이 없는지 확인
+      await saveSchedule(user, {
+        title: '일반 회의',
+        date: '2025-10-15',
+        startTime: '16:00',
+        endTime: '17:00',
+        description: '일반 회의',
+        location: '회의실',
+        category: '업무',
+      });
+
+      const allEventItems = within(screen.getByTestId('event-list')).getAllByTestId(
+        'event-list-item'
+      );
+      const regularEventItem = allEventItems.find(
+        (item) => within(item).queryByText('일반 회의') !== null
+      );
+
+      if (regularEventItem) {
+        const regularEventContent = within(regularEventItem);
+        const hasRepeatIcon =
+          regularEventContent.queryByTestId('repeat-icon') !== null ||
+          regularEventContent.queryByLabelText('반복 일정') !== null ||
+          regularEventContent.queryByRole('img', { name: /반복|repeat/i }) !== null;
+
+        expect(hasRepeatIcon).toBe(false);
+      }
+    });
+
     it('매주 반복 유형을 선택하고 일정을 생성하면 이벤트 리스트 및 캘린더에 바로 표시된다.', async () => {
       // Given: 일정 생성 폼
       // When: 반복 유형 선택 (매일, 매주, 매월, 매년)하고 일정 생성
@@ -568,13 +672,68 @@ describe('반복 일정 기능', () => {
     });
   });
 
-  //   describe('반복 일정 수정', () => {
-  //     it('반복 일정을 수정하면 이벤트 리스트 및 캘린더에 바로 반영된다.', async () => {
-  //       // Given: 일정 생성 폼
-  //       // When: 반복 유형 선택 (매일, 매주, 매월, 매년)하고 일정 생성
-  //       // Then: 입력한 정보대로 이벤트 리스트에 반복 일정이 생성, 캘린더 먼슬리뷰/위클리뷰 확인
-  //     });
-  //   });
+  describe('반복 일정 수정', () => {
+    it('반복 일정을 수정하면 단일 일정으로 수정되어 캘린더, 이벤트 목록에 표시된다.', async () => {
+      // Given: 일정 생성 폼
+      // When: 반복 유형 선택 (매일, 매주, 매월, 매년)하고 일정 생성
+      // Then: 입력한 정보대로 이벤트 리스트에 반복 일정이 생성, 캘린더 먼슬리뷰/위클리뷰 확인
+
+      setupMockHandlerCreation();
+
+      const { user } = setup(<App />);
+
+      // 매일 반복 일정 생성
+      await saveSchedule(
+        user,
+        {
+          title: '데일리 회의',
+          date: '2025-10-01',
+          startTime: '13:30',
+          endTime: '14:30',
+          description: '매일 반복 회의',
+          location: '라운지',
+          category: '업무',
+        },
+        {
+          type: 'daily',
+          interval: 1,
+          endDate: '2025-10-04',
+        }
+      );
+
+      // 반복 일정이 생성되었는지 확인
+      const eventList = within(screen.getByTestId('event-list'));
+      expect(eventList.getAllByText('데일리 회의')).toHaveLength(4); // 4일간 반복
+
+      // 반복 아이콘이 있는 이벤트 아이템들을 찾기
+      const eventItemsWithRepeatIcon = findEventItemsWithRepeatIcon();
+      expect(eventItemsWithRepeatIcon.length).toBeGreaterThan(0);
+
+      // 특정 이벤트에 반복 아이콘이 있는지 확인
+      const hasRepeatIcon = verifyRepeatIconExists('데일리 회의');
+      expect(hasRepeatIcon).toBe(true);
+
+      // 반복 일정 중 하나를 수정
+      const editButtons = screen.getAllByLabelText('Edit event');
+      await user.click(editButtons[0]); // 첫 번째 반복 일정 수정
+
+      // 제목 수정
+      await user.clear(screen.getByLabelText('제목'));
+      await user.type(screen.getByLabelText('제목'), '수정된 데일리 회의');
+
+      await user.click(screen.getByTestId('event-submit-button'));
+
+      // 수정 후 반복 아이콘이 사라졌는지 확인 (단일 일정으로 변경됨)
+      const modifiedEventItemsWithRepeatIcon = findEventItemsWithRepeatIcon();
+
+      // 수정된 이벤트에는 반복 아이콘이 없어야 함
+      const hasModifiedEventRepeatIcon = verifyRepeatIconExists('수정된 데일리 회의');
+      expect(hasModifiedEventRepeatIcon).toBe(false);
+
+      // 나머지 반복 일정이 모두 제거됨
+      expect(modifiedEventItemsWithRepeatIcon.length).toBe(0);
+    });
+  });
 
   //   describe('반복 일정 삭제', () => {
   //     it('반복 일정을 삭제하면 이벤트 리스트 및 캘린더에서 바로 제거된다.', async () => {
