@@ -71,6 +71,21 @@ export const setupMockHandlerUpdating = () => {
   );
 };
 
+export const setupMockHandlerUpdatingRepeatEvent = (events: Event[]) => {
+  const mockEvents: Event[] = [...events];
+
+  server.use(
+    http.put('/api/events/:id', async ({ params, request }) => {
+      const { id } = params;
+      const updatedEvent = (await request.json()) as Event;
+      const index = mockEvents.findIndex((event) => event.id === id);
+
+      mockEvents[index] = { ...mockEvents[index], ...updatedEvent };
+      return HttpResponse.json(mockEvents[index]);
+    })
+  );
+};
+
 export const setupMockHandlerDeletion = () => {
   const mockEvents: Event[] = [
     {

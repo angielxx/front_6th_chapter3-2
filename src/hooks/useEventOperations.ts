@@ -27,12 +27,17 @@ export const useEventOperations = (editing: boolean, onSave?: () => void) => {
     try {
       let response;
 
-      if (eventData.repeat && eventData.repeat.type !== 'none') {
+      if (!editing && eventData.repeat && eventData.repeat.type !== 'none') {
         await createRepeatEvent(eventData);
         return;
       }
 
       if (editing) {
+        if (eventData.repeat && eventData.repeat.type !== 'none') {
+          await updateRepeatEventToSingleEvent(eventData as Event);
+          return;
+        }
+
         response = await fetch(`/api/events/${(eventData as Event).id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -69,7 +74,7 @@ export const useEventOperations = (editing: boolean, onSave?: () => void) => {
       ? new Date(Math.min(new Date(repeatEndDate).valueOf(), MAX_END_DATE.valueOf()))
       : MAX_END_DATE;
 
-    const dates = generateRepeatEvent(startDate, endDate, interval, type);
+    const dates = generateRepeatEvent(startDate, interval, type, endDate);
 
     for (const date of dates) {
       try {
@@ -92,6 +97,29 @@ export const useEventOperations = (editing: boolean, onSave?: () => void) => {
     // 반복 일정 생성 완료 후 이벤트 목록 새로고침
     await fetchEvents();
     enqueueSnackbar('반복 일정이 생성되었습니다.', { variant: 'success' });
+  };
+
+  const updateRepeatEventToSingleEvent = async (eventData: Event) => {
+    const editedEventData: Event = {
+      ...eventData,
+      repeat: {
+        type: 'none',
+        interval: 0,
+      },
+    };
+
+    const response = await fetch(`/api/events/${eventData.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(editedEventData),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to update repeat event to single event');
+    }
+
+    await fetchEvents();
+    enqueueSnackbar('반복 일정이 단일 일정으로 변경되었습니다.', { variant: 'success' });
   };
 
   const deleteEvent = async (id: string) => {

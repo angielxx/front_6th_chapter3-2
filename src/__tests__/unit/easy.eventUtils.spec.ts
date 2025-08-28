@@ -118,24 +118,24 @@ describe('getFilteredEvents', () => {
 describe('generateRepeatEvent', () => {
   describe('매일 반복', () => {
     it('시작 날짜가 종료 날짜보다 미래인 경우, 빈 배열을 반환한다.', () => {
-      const result = generateRepeatEvent('2025-07-03', '2025-07-01', 1, 'daily');
+      const result = generateRepeatEvent('2025-07-03', 1, 'daily', '2025-07-01');
       expect(result).toHaveLength(0);
     });
 
     it('매일 반복 유형이고 반복 간격이 1일 때, 시작 날짜와 종료 날짜 사이의 모든 날짜를 배열로 반환한다.', () => {
-      const result = generateRepeatEvent('2025-07-01', '2025-07-03', 1, 'daily');
+      const result = generateRepeatEvent('2025-07-01', 1, 'daily', '2025-07-03');
       expect(result).toHaveLength(3);
       expect(result).toEqual(['2025-07-01', '2025-07-02', '2025-07-03']);
     });
 
     it('매일 반복 유형이고 반복 간격이 2일 때, 시작 날짜와 종료 날짜 사이의 모든 날짜를 배열로 반환한다.', () => {
-      const result = generateRepeatEvent('2025-07-01', '2025-07-03', 2, 'daily');
+      const result = generateRepeatEvent('2025-07-01', 2, 'daily', '2025-07-03');
       expect(result).toHaveLength(2);
       expect(result).toEqual(['2025-07-01', '2025-07-03']);
     });
 
     it('매일 반복 유형이고 반복 간격이 시작 날짜와 종료 날짜 간격보다 클 때, 시작 날짜만 배열로 반환한다.', () => {
-      const result = generateRepeatEvent('2025-07-01', '2025-07-03', 4, 'daily');
+      const result = generateRepeatEvent('2025-07-01', 4, 'daily', '2025-07-03');
       expect(result).toHaveLength(1);
       expect(result).toEqual(['2025-07-01']);
     });
@@ -143,7 +143,7 @@ describe('generateRepeatEvent', () => {
 
   describe('매주 반복', () => {
     it('매주 반복 유형이고 반복 간격이 1주일 때, 시작 날짜와 종료 날짜 사이의 모든 날짜를 배열로 반환한다.', () => {
-      const result = generateRepeatEvent('2025-07-01', '2025-07-10', 1, 'weekly');
+      const result = generateRepeatEvent('2025-07-01', 1, 'weekly', '2025-07-10');
       expect(result).toHaveLength(2);
       expect(result).toEqual(['2025-07-01', '2025-07-08']);
     });
@@ -151,13 +151,13 @@ describe('generateRepeatEvent', () => {
 
   describe('매월 반복', () => {
     it('매월 반복 유형이고 반복 간격이 1개월 때, 시작 날짜와 종료 날짜 사이의 모든 날짜를 배열로 반환한다.', () => {
-      const result = generateRepeatEvent('2025-07-01', '2025-09-01', 1, 'monthly');
+      const result = generateRepeatEvent('2025-07-01', 1, 'monthly', '2025-09-01');
       expect(result).toHaveLength(3);
       expect(result).toEqual(['2025-07-01', '2025-08-01', '2025-09-01']);
     });
 
     it('매월 반복 유형이고 반복 일정 날짜가 31일일 때, 31일이 있는 달에만 일정이 생성된다.', () => {
-      const result = generateRepeatEvent('2025-07-31', '2025-10-31', 1, 'monthly');
+      const result = generateRepeatEvent('2025-07-31', 1, 'monthly', '2025-10-31');
       expect(result).toHaveLength(3);
       expect(result).toEqual(['2025-07-31', '2025-08-31', '2025-10-31']);
     });
@@ -165,14 +165,13 @@ describe('generateRepeatEvent', () => {
 
   describe('매년 반복', () => {
     it('매년 반복 유형이고 반복 간격이 1년 때, 시작 날짜와 종료 날짜 사이의 모든 날짜를 배열로 반환한다.', () => {
-      const result = generateRepeatEvent('2025-07-01', '2028-07-01', 1, 'yearly');
+      const result = generateRepeatEvent('2025-07-01', 1, 'yearly', '2028-07-01');
       expect(result).toHaveLength(4);
       expect(result).toEqual(['2025-07-01', '2026-07-01', '2027-07-01', '2028-07-01']);
     });
 
     it('매년 반복 유형이고 반복 일정 날짜가 2월 29일일 때, 윤년 2월에만 일정이 생성된다.', () => {
-      const result = generateRepeatEvent('2024-02-29', '2028-02-29', 1, 'yearly');
-      console.log(result);
+      const result = generateRepeatEvent('2024-02-29', 1, 'yearly', '2028-02-29');
       expect(result).toHaveLength(2);
       expect(result).toEqual(['2024-02-29', '2028-02-29']);
     });

@@ -1,3 +1,4 @@
+import { MAX_END_DATE } from '../constants/repeat';
 import { Event, RepeatType } from '../types';
 import { formatDate, getWeekDates, isDateInRange } from './dateUtils';
 
@@ -53,28 +54,11 @@ export function getFilteredEvents(
 // ? 1) 통합테스트에 대한 리팩토링 완료 후
 // ? 2) 통합테스트에 대한 리팩토링 중 유틸함수 생성 직후
 
-/**
- * 날짜가 유효한지 확인하는 함수
- */
-function isValidDate(date: Date): boolean {
-  const year = date.getFullYear();
-  const month = date.getMonth();
-  const day = date.getDate();
-
-  // 새로운 Date 객체를 생성하여 원래 날짜와 비교
-  const checkDate = new Date(year, month, day);
-  return (
-    checkDate.getFullYear() === year &&
-    checkDate.getMonth() === month &&
-    checkDate.getDate() === day
-  );
-}
-
 export function generateRepeatEvent(
   startDate: string | Date,
-  endDate: string | Date,
   interval: number,
-  type: RepeatType
+  type: RepeatType,
+  endDate: string | Date = MAX_END_DATE
 ) {
   const dates: string[] = [];
 
